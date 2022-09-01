@@ -105,7 +105,7 @@ async def create_superuser(
             address_city = city
         )
         
-        role = await RoleDB.create(user=user, role="appstaff", role_instance_id=appstaff.staff_id)
+        role = await RoleDB.create(user=user, role="appstaff", role_instance_id=appstaff.id)
         await Designation.create(user=user, role=role, designation=designation, permission=permission)
     await save_data(username, password, name, phone_number, address_line1, address_line2, city, add_code, email, designation)
 

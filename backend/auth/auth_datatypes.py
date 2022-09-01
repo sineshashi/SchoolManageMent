@@ -7,7 +7,10 @@ class UserLoginIN(BaseModel):
     password: str
     
 class DeviceIN(BaseModel):
-    device_id: str | None = None
-    device_name: str
-    browser_name: str
+    device_model: str = ""
+    platform: str = ""
+    os_version: str = ""
+    operating_system: str = ""
+    manufacturer: str = ""
+    browser_name: str = ""
     device_location: Optional[str] = None

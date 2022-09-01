@@ -1,6 +1,5 @@
 from typing import Any, List, Optional
 from fastapi import Depends, APIRouter
-
 from .auth_config import pwd_context, fresh_token_expires, authjwt_access_token_expires, authjwt_refresh_token_expires
 from .auth_datatypes import DeviceIN, UserLoginIN
 from project.models import UserDB, Designation
@@ -25,22 +24,15 @@ async def login(userData: UserLoginIN, deviceData: DeviceIN, Authorize: AuthJWT 
     if len(users) != 1 or not pwd_context.verify(password, users[0]["password"]):
         raise HTTPException(status_code=401, detail="Either User Name or Password is wrong.")
     
-    if deviceData.device_id is not None:
-        login_token_tuple = await LoginToken.get_or_create(
-            device_id=deviceData.device_id,
-            defaults={
-                "device_name": deviceData.device_name,
-                "browser_name": deviceData.browser_name,
-                "device_location": deviceData.device_location
-            }
-        )
-    else:
-        login_token_tuple = await LoginToken.get_or_create(
-            device_name=deviceData.device_name,
-            browser_name=deviceData.browser_name,
-            user_id=users[0]["user_id"],
-            defaults={"device_location": deviceData.device_location}
-            )
+    device_identifier = str(users[0]["user_id"]) + "||" + deviceData.device_model + "||" + deviceData.platform + \
+        "||"+deviceData.operating_system+"||"+deviceData.os_version+"||"+deviceData.manufacturer+"||"+deviceData.browser_name
+    device_data = deviceData.dict()
+    location = device_data.pop("device_location")
+    login_token_tuple = await LoginToken.get_or_create(
+        device_identifier=device_identifier,
+        defaults=device_data
+    )
+    
     token_instance = login_token_tuple[0]
     
     if token_instance.blocked:
@@ -80,7 +72,10 @@ async def login(userData: UserLoginIN, deviceData: DeviceIN, Authorize: AuthJWT 
             }
         )
 
-    await LoginToken.filter(id=token_instance.id).update(refresh_token=refresh_token)
+    if location is not None:
+        await LoginToken.filter(id=token_instance.id).update(refresh_token=refresh_token, device_location = location)
+    else:
+        await LoginToken.filter(id=token_instance.id).update(refresh_token=refresh_token)
     
     cached_data = memcached_client.get(str(users[0]["user_id"]))
     if cached_data is None:
@@ -150,12 +145,7 @@ async def get_all_logged_in_devices(Authorization: AuthJWT=Depends()):
     Authorization.jwt_required()
     user_claims = Authorization.get_raw_jwt()
     user_id = user_claims["user_claims"]["user_id"]
-    tokens = await LoginToken.filter(user_id=user_id).values(
-        token_id = "id",
-        device_name = "device_name",
-        browser_name = "browser_name",
-        device_location = "device_location"
-    )
+    tokens = await LoginToken.filter(user_id=user_id).values()
     return tokens
 
 @router.get("/getFreshAccessToken")
