@@ -1,17 +1,19 @@
-from fastapi import FastAPI
-from project.config import DOCS_ENABLED, DBURL
-from tortoise import generate_config
-from tortoise.contrib.fastapi import register_tortoise
-from fastapi.middleware.cors import CORSMiddleware
-from project.config import CORS_CONFIG
+import appstaff.appstaff_management.asm_apis as asm_apis
+import auth.auth_apis as auth_apis
 import auth.auth_config as authCofig
-from fastapi_jwt_auth import AuthJWT
-from fastapi_jwt_auth.exceptions import AuthJWTException
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
-import auth.auth_apis as auth_apis
-from .shared.memcached_related import memcached_client
+from fastapi_jwt_auth import AuthJWT
+from fastapi_jwt_auth.exceptions import AuthJWTException
+from tortoise import generate_config
+from tortoise.contrib.fastapi import register_tortoise
+
+from project.config import CORS_CONFIG, DBURL, DOCS_ENABLED
+
 from .custom_openapi import custom_openapi
+from .shared.memcached_related import memcached_client
 
 if DOCS_ENABLED:
     app = FastAPI()
@@ -38,9 +40,11 @@ app.add_middleware(
     expose_headers=CORS_CONFIG["EXPOSE_HEADERS"]
 )
 
+
 @AuthJWT.load_config
 def get_config():
     return authCofig.JWTSettings()
+
 
 @app.exception_handler(AuthJWTException)
 def authjwt_exception_handler(request: Request, exc: AuthJWTException):
@@ -49,18 +53,24 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
         content={"detail": exc.message}
     )
 
+
 '''
-This will not let pass through those requests whose token is saved as keyy and value as True in in memcached.
+This will not let pass through those requests whose token is saved as key and value as True in memcached.
 '''
+
+
 @AuthJWT.token_in_denylist_loader
 def check_if_token_in_denylist(decrypted_token):
     jti = decrypted_token['jti']
     entry = memcached_client.get(jti)
     return entry and entry == True
 
-db_config = generate_config(db_url=DBURL, app_modules={"models": ["project.models", "aerich.models", "auth.auth_models"]})
 
-register_tortoise(app=app, config=db_config, generate_schemas=True, add_exception_handlers=True)
+db_config = generate_config(db_url=DBURL, app_modules={"models": [
+                            "project.models", "aerich.models", "auth.auth_models"]})
+
+register_tortoise(app=app, config=db_config,
+                  generate_schemas=True, add_exception_handlers=True)
 
 app.include_router(
     router=auth_apis.router,
@@ -68,4 +78,8 @@ app.include_router(
     tags=["Authetication and Permissions"]
 )
 
-import project.services
+app.include_router(
+    router=asm_apis.router,
+    prefix="/asm",
+    tags=["App Staff Management"]
+)

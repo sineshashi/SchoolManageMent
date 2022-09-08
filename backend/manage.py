@@ -1,9 +1,10 @@
 import sys, subprocess, time
 from colorama import Fore
 from tortoise import run_async, Tortoise
+from project.models import RolesEnum
 from project.config import DBURL
 from tortoise.transactions import in_transaction, atomic
-from project.models import Trigger, UserDB, AppStaff, Permission, Designation, RoleDB
+from project.models import Trigger, UserDB, AppStaff, Permission, Designation
 from project.sql.sql_queries import auto_handle_created_at, auto_handle_updated_at, auto_now_add_trigger, auto_now_trigger
 import uvicorn
 from project.config import DEPLOYMENT_DETAILS
@@ -91,7 +92,7 @@ async def create_superuser(
     ):
         hashed_pwd = pwd_context.hash(password)
         user = await UserDB.create(username=username, password=hashed_pwd)
-        permission = await Permission.create(permissions={"all_auth": True}, designation=designation)
+        permission = await Permission.create(permissions_json={"all_auth": True}, designation=designation, role="appstaff")
         
         appstaff = await AppStaff.create(
             user = user,
@@ -105,8 +106,7 @@ async def create_superuser(
             address_city = city
         )
         
-        role = await RoleDB.create(user=user, role="appstaff", role_instance_id=appstaff.id)
-        await Designation.create(user=user, role=role, designation=designation, permission=permission)
+        await Designation.create(user=user, role="appstaff", designation=designation, permission=permission, role_instance_id=appstaff.id)
     await save_data(username, password, name, phone_number, address_line1, address_line2, city, add_code, email, designation)
 
 def check_null(field, value):

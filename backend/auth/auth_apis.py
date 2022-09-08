@@ -21,6 +21,7 @@ async def login(userData: UserLoginIN, deviceData: DeviceIN, Authorize: AuthJWT 
     user_data = userData.dict()
     password = user_data["password"]
     users = await UserDB.filter(username=user_data["username"]).values()
+
     if len(users) != 1 or not pwd_context.verify(password, users[0]["password"]):
         raise HTTPException(status_code=401, detail="Either User Name or Password is wrong.")
     
@@ -30,6 +31,7 @@ async def login(userData: UserLoginIN, deviceData: DeviceIN, Authorize: AuthJWT 
     location = device_data.pop("device_location")
     login_token_tuple = await LoginToken.get_or_create(
         device_identifier=device_identifier,
+        user_id = users[0]["user_id"],
         defaults=device_data
     )
     
@@ -41,27 +43,27 @@ async def login(userData: UserLoginIN, deviceData: DeviceIN, Authorize: AuthJWT 
     
     current_designation = await Designation.filter(user_id = users[0]["user_id"], active=True).values(
         designation = "designation",
-        permission = "permission__permissions",
+        permissions_json = "permission__permissions_json",
         designation_id = "id",
-        role = "role__role",
-        role_instance_id = "role__role_instance_id"
+        role = "role",
+        role_instance_id = "role_instance_id"
     )
     if len(current_designation) == 0:
         raise HTTPException(204, detail="You do not have any active account.")
     
     access_token = Authorize.create_access_token(
-        subject=users[0]["role"],
+        subject=current_designation[0]["role"],
         user_claims={
                 "user_claims": {
                 "user_id": users[0]["user_id"],
                 "username": users[0]["username"],
                 "token_id": token_instance.id,
-                "role_and_permisions": current_designation[0]
+                "role_and_permissions": current_designation[0]
                 }
             }
         )
     refresh_token = Authorize.create_refresh_token(
-        subject=users[0]["role"],
+        subject=current_designation[0]["role"],
         user_claims={
                 "user_claims": {
                 "user_id": users[0]["user_id"],
