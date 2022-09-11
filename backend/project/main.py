@@ -60,9 +60,9 @@ This will not let pass through those requests whose token is saved as key and va
 
 
 @AuthJWT.token_in_denylist_loader
-def check_if_token_in_denylist(decrypted_token):
+async def check_if_token_in_denylist(decrypted_token):
     jti = decrypted_token['jti']
-    entry = get_from_redis(key=jti)
+    entry = await get_from_redis(key=jti)
     return entry and entry == True
 
 

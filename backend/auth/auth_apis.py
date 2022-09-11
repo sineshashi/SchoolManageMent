@@ -79,7 +79,7 @@ async def login(userData: UserLoginIN, deviceData: DeviceIN, Authorize: AuthJWT 
     else:
         await LoginToken.filter(id=token_instance.id).update(refresh_token=refresh_token)
     
-    cached_data = get_from_redis(key=users[0]["user_id"])
+    cached_data = await get_from_redis(key=users[0]["user_id"])
  
     if cached_data is None:
         cached_data = {
@@ -98,7 +98,7 @@ async def login(userData: UserLoginIN, deviceData: DeviceIN, Authorize: AuthJWT 
             }
         }
     
-    set_in_redis(key=users[0]["user_id"], value=cached_data) 
+    await set_in_redis(key=users[0]["user_id"], value=cached_data) 
     user_personal_data = await getRoleModel(current_designation[0]["role"]).filter(id = current_designation[0]["role_instance_id"], active=True, blocked=False).values()
     if len(user_personal_data) == 0:
         raise HTTPException(status_code=204, detail="Your account is not active or has been blocked.")
@@ -113,7 +113,7 @@ async def refresh_access_token(Authorize: AuthJWT=Depends()):
     user_claims = Authorize.get_raw_jwt()
     user_id = user_claims["user_claims"]["user_id"]
     token_id = user_claims["user_claims"]["token_id"]
-    cached_data = get_from_redis(key=user_id)
+    cached_data = await get_from_redis(key=user_id)
     if cached_data is None:
         user = await UserDB.filter(user_id=user_id)
         if len(user) == 0:
@@ -139,7 +139,7 @@ async def refresh_access_token(Authorize: AuthJWT=Depends()):
             raise HTTPException(status_code=401, detail="This device has been blocked.")
         access_token = Authorize.create_access_token(subject=subject, user_claims={"user_claims": user_claims["user_claims"]})
         cached_data[token_id]["token_data"]["access_token"] = access_token
-    set_in_redis(key=user_id, value=cached_data)
+    await set_in_redis(key=user_id, value=cached_data)
     
     return {"access_token": access_token}
 
@@ -158,7 +158,7 @@ async def get_fresh_access_token_for_special_tasks(password: str, Authorization:
     user_claims = Authorization.get_raw_jwt()
     user_id = user_claims["user_claims"]["user_id"]
     token_id = user_claims["user_claims"]["token_id"]
-    cached_data = get_from_redis(key = str(user_id))
+    cached_data = await get_from_redis(key = str(user_id))
     users = await UserDB.filter(user_id=user_id).values()
     if len(users) != 1 or not pwd_context.verify(password, users[0]["password"]):
         raise HTTPException(status_code=401, detail="Either User Name or Password is wrong.")
@@ -194,25 +194,25 @@ async def logout_devices_and_invalidate_fresh_token(tokenIDs: List[int], block: 
     )
     if block:
         await LoginToken.filter(id__in=tokenIDs).update(blocked=True)
-    cached_tokens = get_from_redis(key=str(user_id))
+    cached_tokens = await get_from_redis(key=str(user_id))
     for db_token in db_tokens:
         if db_token is None:
             continue
         refresh_jti = Authorization.get_jti(db_token["refresh_token"])
-        set_in_redis(key=refresh_jti, value=True, expiry_time=authjwt_refresh_token_expires)
+        await set_in_redis(key=refresh_jti, value=True, expiry_time=authjwt_refresh_token_expires)
     
     updated_cached = cached_tokens
     for token_id, token_data in cached_tokens:
         if token_data["access_token"] is not None:
             access_jti = Authorization.get_jti(token_data["access_token"])
-            set_in_redis(key=access_jti, value=True, expiry_time=authjwt_access_token_expires)
+            await set_in_redis(key=access_jti, value=True, expiry_time=authjwt_access_token_expires)
             updated_cached[token_id]["token_data"]["access_token"] = None
             if block:
                 updated_cached[token_id]["token_data"]["bloked"] = True
-    set_in_redis(key=str(user_id), value=updated_cached)
+    await set_in_redis(key=str(user_id), value=updated_cached)
     
     fresh_token = user_claims["jti"]
-    set_in_redis(key=fresh_token, value=True, expiry_time=fresh_token_expires)
+    await set_in_redis(key=fresh_token, value=True, expiry_time=fresh_token_expires)
     return {"success": True}
 
 @router.delete("/logoutThisDevice")
@@ -220,9 +220,9 @@ async def logout_this_device(Authorization:AuthJWT=Depends()):
     '''This will expire access token only.'''
     Authorization.jwt_required()
     user_claims = Authorization.get_raw_jwt()
-    cached_data = get_from_redis(key=str(user_claims["user_claims"]["user_id"]))
+    cached_data = await get_from_redis(key=str(user_claims["user_claims"]["user_id"]))
     if cached_data.get(user_claims["user_claims"]["token_id"]) is not None:
         cached_data[user_claims["user_claims"]["token_id"]]["token_data"]["access_token"] = None
-    set_in_redis(key=str(user_claims["user_claims"]["user_id"]), value=cached_data)
-    set_in_redis(key=user_claims["jti"], value=True, expiry_time=authjwt_access_token_expires)
+    await set_in_redis(key=str(user_claims["user_claims"]["user_id"]), value=cached_data)
+    await set_in_redis(key=user_claims["jti"], value=True, expiry_time=authjwt_access_token_expires)
     return {"success": True}
