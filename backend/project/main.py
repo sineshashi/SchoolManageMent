@@ -13,7 +13,7 @@ from tortoise.contrib.fastapi import register_tortoise
 from project.config import CORS_CONFIG, DBURL, DOCS_ENABLED
 
 from .custom_openapi import custom_openapi
-from .shared.memcached_related import memcached_client
+from .shared.redis_cofig import r
 
 if DOCS_ENABLED:
     app = FastAPI()
@@ -55,14 +55,14 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
 
 
 '''
-This will not let pass through those requests whose token is saved as key and value as True in memcached.
+This will not let pass through those requests whose token is saved as key and value as True in redis.
 '''
 
 
 @AuthJWT.token_in_denylist_loader
 def check_if_token_in_denylist(decrypted_token):
     jti = decrypted_token['jti']
-    entry = memcached_client.get(jti)
+    entry = r.get(jti)
     return entry and entry == True
 
 

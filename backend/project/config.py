@@ -11,12 +11,16 @@ CORS_CONFIG = {
 DB_CONFIG = {
     "USER": "sms_dev",
     "DBNAME": "smsdb",
-    "PASSWORD": "sms@dev",
+    "PASSWORD": "sms@dev", #Local
+    # "PASSWORD": "QnulMOBI88621M7wkTSHw4E4QnTeM7jh", #Prod
     "PORT": 5432,
     "HOST": "localhost"
 }
+#local
+# DBURL = "postgres://"+DB_CONFIG["USER"]+":"+DB_CONFIG["PASSWORD"]+"@"+DB_CONFIG["HOST"]+":"+str(DB_CONFIG["PORT"])+"/"+DB_CONFIG["DBNAME"]
 
-DBURL = "postgres://"+DB_CONFIG["USER"]+":"+DB_CONFIG["PASSWORD"]+"@"+DB_CONFIG["HOST"]+":"+str(DB_CONFIG["PORT"])+"/"+DB_CONFIG["DBNAME"]
+#prod
+DBURL = "postgres://sms_dev:QnulMOBI88621M7wkTSHw4E4QnTeM7jh@dpg-ccem9kun6mpt4gqtf15g-a.singapore-postgres.render.com/smsdb"
 
 DEPLOYMENT_DETAILS = {
     "HOST": "localhost",
