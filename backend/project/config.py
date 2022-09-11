@@ -23,6 +23,6 @@ DB_CONFIG = {
 DBURL = "postgres://sms_dev:QnulMOBI88621M7wkTSHw4E4QnTeM7jh@dpg-ccem9kun6mpt4gqtf15g-a.singapore-postgres.render.com/smsdb"
 
 DEPLOYMENT_DETAILS = {
-    "HOST": "localhost",
-    "PORT": 8080
+    "HOST": "0.0.0.0",
+    "PORT": 10000
 }
