@@ -13,7 +13,7 @@ from tortoise.contrib.fastapi import register_tortoise
 from project.config import CORS_CONFIG, DBURL, DOCS_ENABLED
 
 from .custom_openapi import custom_openapi
-from .shared.redis_cofig import get_from_redis
+from .shared.redis_cofig import sync_r, deserialize
 
 if DOCS_ENABLED:
     app = FastAPI()
@@ -60,9 +60,11 @@ This will not let pass through those requests whose token is saved as key and va
 
 
 @AuthJWT.token_in_denylist_loader
-async def check_if_token_in_denylist(decrypted_token):
+def check_if_token_in_denylist(decrypted_token):
     jti = decrypted_token['jti']
-    entry = await get_from_redis(key=jti)
+    entry = sync_r.get(jti)
+    if entry is not None:
+        entry = deserialize(entry, picklify=True)
     return entry and entry == True
 
 
