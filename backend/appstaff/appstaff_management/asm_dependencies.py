@@ -3,6 +3,7 @@ from fastapi_jwt_auth import AuthJWT
 from fastapi import Depends
 from pydantic import BaseModel
 from fastapi.exceptions import HTTPException
+from typing import Optional
 
 from project.shared.necessities import AppStaffPermissions
 
@@ -11,9 +12,9 @@ Use PermissionReturnDataType at the last of every return data type of auth relat
 '''
 class AppStaffPermissionReturnDataType(BaseModel):
     permission: bool
-    user_id: int | None = None
-    role_instance_id: int | None = None
-    permissions_json: AppStaffPermissions | None = None
+    user_id: Optional[int] = None
+    role_instance_id: Optional[int] = None
+    permissions_json: Optional[AppStaffPermissions] = None
 
 async def can_add_new_staff(Authorize: AuthJWT=Depends())->AppStaffPermissionReturnDataType:
     Authorize.jwt_required()

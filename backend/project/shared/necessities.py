@@ -7,6 +7,7 @@ from typing import List
 from ..models import Admin, AppStaff, PermissionLevelEnum, RolesEnum, SuperAdmin
 from pydantic import BaseModel, validator
 from fastapi.exceptions import HTTPException
+from typing import Optional
 
 #Maintain below Role Enum and getRoleModelFuntion for each new class extending User model.
 
@@ -39,4 +40,4 @@ class AppStaffPermissions(BaseModel):
     can_create_designation: bool = False
     can_authorize_someone_to_create_designation: bool = False
     can_authorize_someone_to_permit_other_to_create_designation: bool = False
-    permitted_roles_for_designation: PermittedRoles | None = None
+    permitted_roles_for_designation: Optional[PermittedRoles] = None

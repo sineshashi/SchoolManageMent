@@ -10,6 +10,7 @@ from tortoise.transactions import atomic
 from project.shared.necessities import AppStaffPermissions
 from fastapi.exceptions import HTTPException
 import datetime
+from typing import Optional
 
 router = APIRouter()
 
@@ -40,7 +41,7 @@ async def create_new_staff(
     permission_id: int, #Id of permissions, which permissions should be given to him.
     userData: UserCreateDataTypeIn,
     profileData: appstaffDataTypeIn,
-    designation_start_time: datetime.datetime | None = None,
+    designation_start_time: Optional[datetime.datetime] = None,
     tokenData: AppStaffPermissionReturnDataType=Depends(can_add_new_staff)
     ):
         permissions = await Permission.filter(id=permission_id).values()
