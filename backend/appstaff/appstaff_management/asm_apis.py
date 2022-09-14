@@ -2,7 +2,7 @@ from fastapi.routing import APIRouter
 from auth.permissions_validation import validate_app_staff_permissions
 from project.models import UserDB, Designation, Permission, AppStaff, PermissionLevelEnum
 from project.shared.common_datatypes import UserCreateDataTypeIn
-from .asm_dependencies import can_add_new_staff, AppStaffPermissionReturnDataType, can_create_designation, can_get_data_for_appstaff, is_valid_staff
+from ..asm_dependencies import can_add_new_staff, AppStaffPermissionReturnDataType, can_create_designation, can_get_data_for_appstaff, is_valid_staff
 from .asm_datatypes import NewAppLevelDesignationIn, appstaffDataTypeIn
 from fastapi import Depends
 from auth.auth_config import pwd_context
@@ -51,6 +51,8 @@ async def create_new_staff(
         permissions = await Permission.filter(id=permission_id).values()
         if permissions[0]["role"] != "appstaff":
             raise HTTPException(406, "This is not correct permission id.")
+        if designation_start_time is not None:
+            designation_start_time.astimezone("utc")
         @atomic()
         async def createUserAndStaffAccount():
             

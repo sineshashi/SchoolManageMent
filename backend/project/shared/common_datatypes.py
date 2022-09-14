@@ -1,4 +1,4 @@
-from project.models import Designation, UserDB
+from project.models import Designation, UserDB, SuperAdmin, Admin
 from pydantic import BaseModel, validator
 from tortoise.contrib.pydantic import pydantic_model_creator
 
@@ -29,3 +29,6 @@ class UserCreateDataTypeIn(BaseModel):
     def username_alphanumeric(cls, v):
         assert v.isalnum(), 'must be alphanumeric'
         return v
+
+SuperAdminDataTypeIn = pydantic_model_creator(SuperAdmin, exclude_readonly=True)
+AdminDataTypeIn = pydantic_model_creator(Admin, exclude_readonly=True)

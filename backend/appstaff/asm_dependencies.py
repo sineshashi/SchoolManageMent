@@ -1,4 +1,3 @@
-from auth.auth_config import pwd_context
 from fastapi_jwt_auth import AuthJWT
 from fastapi import Depends
 from pydantic import BaseModel
@@ -76,3 +75,53 @@ async def is_valid_staff(Authorize: AuthJWT = Depends()):
             })
     else:
         raise HTTPException(406, "You are not appstaff.")
+
+async def can_onboard(Authorize: AuthJWT = Depends()):
+    Authorize.jwt_optional()
+    user_claims = Authorize.get_raw_jwt()
+    if user_claims is not None:
+        if user_claims["sub"] == "appstaff" and (user_claims["user_claims"]["role_and_permissions"]["permissions_json"]["all_auth"] or user_claims["user_claims"]["role_and_permissions"]["permissions_json"]["can_onboard"]):
+            return AppStaffPermissionReturnDataType(**{
+                "permission": True,
+                "user_id": user_claims["user_claims"]["user_id"],
+                "role_instance_id": user_claims["user_claims"]["role_and_permissions"]["role_instance_id"],
+                "permissions_json": user_claims["user_claims"]["role_and_permissions"]["permissions_json"]
+                })
+        else:
+            raise HTTPException(406, "You are not appstaff.")
+    else:
+        return AppStaffPermissionReturnDataType(**{
+            "permission": True,
+            "user_id": None,
+            "role_instance_id":None,
+            "permissions_json": None
+        })
+
+async def can_onboard_admin(Authorize: AuthJWT = Depends()):
+    Authorize.jwt_optional()
+    user_claims = Authorize.get_raw_jwt()
+    if user_claims is not None:
+        if user_claims["sub"] == "appstaff" and (user_claims["user_claims"]["role_and_permissions"]["permissions_json"]["all_auth"] or user_claims["user_claims"]["role_and_permissions"]["permissions_json"]["can_onboard"]):
+            return AppStaffPermissionReturnDataType(**{
+                "permission": True,
+                "user_id": user_claims["user_claims"]["user_id"],
+                "role_instance_id": user_claims["user_claims"]["role_and_permissions"]["role_instance_id"],
+                "permissions_json": user_claims["user_claims"]["role_and_permissions"]["permissions_json"]
+                })
+        elif user_claims['sub'] == "superadmin":
+            return AppStaffPermissionReturnDataType(**{
+                "permission": True,
+                "user_id": user_claims["user_claims"]["user_id"],
+                "role_instance_id": user_claims["user_claims"]["role_and_permissions"]["role_instance_id"],
+                "permissions_json": user_claims["user_claims"]["role_and_permissions"]["permissions_json"]
+                })
+        else:
+            raise HTTPException(406, "You are not appstaff.")
+    else:
+        return AppStaffPermissionReturnDataType(**{
+            "permission": True,
+            "user_id": None,
+            "role_instance_id":None,
+            "permissions_json": None
+        })
+

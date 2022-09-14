@@ -1,5 +1,6 @@
 import appstaff.appstaff_management.asm_apis as asm_apis
 import auth.auth_apis as auth_apis
+import appstaff.onboarding.onboard_apis as onboarding_apis
 import auth.auth_config as authCofig
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,11 +78,17 @@ register_tortoise(app=app, config=db_config,
 app.include_router(
     router=auth_apis.router,
     prefix="/auth",
-    tags=["Authetication and Permissions"]
+    tags=["Authentication and Permissions"]
 )
 
 app.include_router(
     router=asm_apis.router,
     prefix="/asm",
     tags=["App Staff Management"]
+)
+
+app.include_router(
+    router=onboarding_apis.router,
+    prefix="/onboarding",
+    tags=["Onboarding"]
 )

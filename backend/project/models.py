@@ -100,7 +100,7 @@ class SuperAdmin(Model):
     active = fields.BooleanField(default=True, index=True, null=False)
     blocked = fields.BooleanField(default=False, index=True, null=False)
     pic_url = fields.TextField(null=True)
-    created_at = UTCDateTimeField(mull=True)
+    created_at = UTCDateTimeField(null=True)
     updated_at = UTCDateTimeField(null=True)
     created_by = fields.ForeignKeyField("models.UserDB", related_name="created_super_admins", on_delete=fields.SET_NULL, null=True)
     
@@ -123,7 +123,7 @@ class Admin(Model):
     active = fields.BooleanField(default=True, index=True, null=False)
     blocked = fields.BooleanField(default=False, index=True, null=False)
     pic_url = fields.TextField(null=True)
-    created_at = UTCDateTimeField(mull=True)
+    created_at = UTCDateTimeField(null=True)
     updated_at = UTCDateTimeField(null=True)
     created_by = fields.ForeignKeyField("models.UserDB", related_name="created_admins", on_delete=fields.SET_NULL, null=True)
     
