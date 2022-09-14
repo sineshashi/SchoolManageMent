@@ -41,3 +41,4 @@ class AppStaffPermissions(BaseModel):
     can_authorize_someone_to_create_designation: bool = False
     can_authorize_someone_to_permit_other_to_create_designation: bool = False
     permitted_roles_for_designation: Optional[PermittedRoles] = None
+    can_get_other_appstaff_data: bool = False

@@ -3,7 +3,7 @@ from fastapi.exceptions import HTTPException
 
 
 def validate_app_staff_permissions(requested_permissions: AppStaffPermissions, giver_permissions: AppStaffPermissions):
-    if requested_permissions.can_create_designation and (len(requested_permissions.permitted_roles_for_designation.create_designation_in_roles) == 0 or len(requested_permissions.permitted_roles_for_designation.create_permission_levels==0)):
+    if requested_permissions.can_create_designation and (len(requested_permissions.permitted_roles_for_designation.create_designation_in_roles) == 0 or len(requested_permissions.permitted_roles_for_designation.create_permission_levels)==0):
         raise HTTPException(
             406, "if can_create_designation is true, create_designation_in_roles and create_permission_levels must have at least one role.")
     if requested_permissions.can_authorize_someone_to_create_designation and (len(requested_permissions.permitted_roles_for_designation.authorize_to_create_designation_in_roles) == 0 or len(requested_permissions.permitted_roles_for_designation.authorize_to_create_permission_levels)==0):

@@ -1,4 +1,5 @@
 from ast import Str
+from typing import Optional
 from tortoise.contrib.pydantic import pydantic_model_creator
 from project.models import AppStaff
 from pydantic import BaseModel, validator

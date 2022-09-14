@@ -37,7 +37,7 @@ async def can_create_designation(Authorize: AuthJWT=Depends())->AppStaffPermissi
     user_claims = Authorize.get_raw_jwt()
     permissions_json = user_claims["user_claims"]["role_and_permissions"]["permissions_json"]
     if permissions_json is not None and (
-        not permissions_json.get("all_auth") or not permissions_json.get("can_create_designation")
+        permissions_json.get("all_auth") or permissions_json.get("can_create_designation")
     ) and user_claims["sub"] == "appstaff":
         return AppStaffPermissionReturnDataType(**{
             "permission": True,
@@ -47,3 +47,32 @@ async def can_create_designation(Authorize: AuthJWT=Depends())->AppStaffPermissi
             })
     else:
         raise HTTPException(406, "You are not permitted to create new designation.")
+
+async def can_get_data_for_appstaff(user_id: int, Authorize: AuthJWT=Depends())->AppStaffPermissionReturnDataType:
+    Authorize.jwt_required()
+    user_claims = Authorize.get_raw_jwt()
+    permissions_json = user_claims["user_claims"]["role_and_permissions"]["permissions_json"]
+    if permissions_json is not None and (
+        permissions_json.get("all_auth") or permissions_json.get("can_get_other_app_staff_data") or user_id == user_claims["user_claims"]["user_id"]
+    ) and user_claims["sub"] == "appstaff":
+        return AppStaffPermissionReturnDataType(**{
+            "permission": True,
+            "user_id": user_claims["user_claims"]["user_id"],
+            "role_instance_id": user_claims["user_claims"]["role_and_permissions"]["role_instance_id"],
+            "permissions_json": user_claims["user_claims"]["role_and_permissions"]["permissions_json"]
+            })
+    else:
+        raise HTTPException(406, "You are not permitted to access data for this user.")
+
+async def is_valid_staff(Authorize: AuthJWT = Depends()):
+    Authorize.jwt_required()
+    user_claims = Authorize.get_raw_jwt()
+    if user_claims["sub"] == "appstaff":
+        return AppStaffPermissionReturnDataType(**{
+            "permission": True,
+            "user_id": user_claims["user_claims"]["user_id"],
+            "role_instance_id": user_claims["user_claims"]["role_and_permissions"]["role_instance_id"],
+            "permissions_json": user_claims["user_claims"]["role_and_permissions"]["permissions_json"]
+            })
+    else:
+        raise HTTPException(406, "You are not appstaff.")
