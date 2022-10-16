@@ -1,4 +1,5 @@
 DOCS_ENABLED = True
+ENV = "prod"
 
 CORS_CONFIG = {
     "ALLOWED_HOSTS": ["http://localhost:8000"],
@@ -16,13 +17,18 @@ DB_CONFIG = {
     "PORT": 5432,
     "HOST": "localhost"
 }
-#local
-# DBURL = "postgres://"+DB_CONFIG["USER"]+":"+DB_CONFIG["PASSWORD"]+"@"+DB_CONFIG["HOST"]+":"+str(DB_CONFIG["PORT"])+"/"+DB_CONFIG["DBNAME"]
+if ENV == "local":
+    DBURL = "postgres://"+DB_CONFIG["USER"]+":"+DB_CONFIG["PASSWORD"]+"@"+DB_CONFIG["HOST"]+":"+str(DB_CONFIG["PORT"])+"/"+DB_CONFIG["DBNAME"]
 
-#prod
-DBURL = "postgres://sms_dev:QnulMOBI88621M7wkTSHw4E4QnTeM7jh@dpg-ccem9kun6mpt4gqtf15g-a.singapore-postgres.render.com/smsdb"
+elif ENV == "prod":
+    DBURL = "postgres://sms_dev:QnulMOBI88621M7wkTSHw4E4QnTeM7jh@dpg-ccem9kun6mpt4gqtf15g-a.singapore-postgres.render.com/smsdb"
 
 DEPLOYMENT_DETAILS = {
     "HOST": "0.0.0.0",
     "PORT": 10000
 }
+
+if ENV == "local":
+    ALLOW_SELF_ONBOARDING = True
+elif ENV == "prod":
+    ALLOW_SELF_ONBOARDING = False

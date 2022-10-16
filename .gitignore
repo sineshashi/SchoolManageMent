@@ -1,4 +1,4 @@
 env
-backend/migrations
+/migrations
 **.pyc
 **.toml

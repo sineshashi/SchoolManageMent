@@ -1,12 +1,19 @@
-from project.models import Designation, UserDB, SuperAdmin, Admin
-from pydantic import BaseModel, validator
-from tortoise.contrib.pydantic import pydantic_model_creator
+from pydantic import BaseModel
+from typing import Optional
+from pydantic import validator
 
-userDataTypeIn = pydantic_model_creator(UserDB, exclude_readonly=True)
-
-DesignationDataTypeIn = pydantic_model_creator(
-    Designation, exclude_readonly=True)
-
+class UserLoginIN(BaseModel):
+    username: str
+    password: str
+    
+class DeviceIN(BaseModel):
+    device_model: str = ""
+    platform: str = ""
+    os_version: str = ""
+    operating_system: str = ""
+    manufacturer: str = ""
+    browser_name: str = ""
+    device_location: Optional[str] = None
 
 class UserCreateDataTypeIn(BaseModel):
     username: str
@@ -29,6 +36,3 @@ class UserCreateDataTypeIn(BaseModel):
     def username_alphanumeric(cls, v):
         assert v.isalnum(), 'must be alphanumeric'
         return v
-
-SuperAdminDataTypeIn = pydantic_model_creator(SuperAdmin, exclude_readonly=True)
-AdminDataTypeIn = pydantic_model_creator(Admin, exclude_readonly=True)

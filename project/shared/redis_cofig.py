@@ -3,9 +3,10 @@ import redis as sync_redis
 import pickle, json
 
 redis_url = "rediss://red-ccemk2en6mpt4gqtfhtg:1dR8SmnglukCwSNePB55SwhKCAqDw2fz@singapore-redis.render.com:6379"
-r = redis.Redis.from_url(redis_url)
-sync_r = sync_redis.Redis.from_url(redis_url)
+# r = redis.Redis.from_url(redis_url)
+# sync_r = sync_redis.Redis.from_url(redis_url)
 
+r = None
 def serialize(data, jsonify=False, picklify =False, stringfy=False):
     if stringfy:
         try:

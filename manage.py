@@ -1,10 +1,10 @@
 import sys, subprocess, time
 from colorama import Fore
 from tortoise import run_async, Tortoise
-from project.models import RolesEnum
+from db_management.models import RolesEnum
 from project.config import DBURL
 from tortoise.transactions import in_transaction, atomic
-from project.models import Trigger, UserDB, AppStaff, Permission, Designation
+from db_management.models import Trigger, UserDB, AppStaff, Designation
 from project.sql.sql_queries import auto_handle_created_at, auto_handle_updated_at, auto_now_add_trigger, auto_now_trigger
 import uvicorn
 from project.config import DEPLOYMENT_DETAILS
@@ -12,14 +12,19 @@ from tortoise.models import Model
 from project.main import db_config
 from auth.auth_config import pwd_context
 
-created_at_table_names = []
-updated_at_table_names = []
-for cls in Model.__subclasses__():
-    cls_name = cls.__name__
-    if "created_at" in cls._meta.fields:
-        created_at_table_names.append(cls_name.casefold())
-    if "updated_at" in cls._meta.fields:
-        updated_at_table_names.append(cls_name.casefold())
+class Tables:
+    def __init__(self):
+        self.created_at_table_names = []
+        self.updated_at_table_names = []
+
+    def get_all_table_names_with_created_at_or_updated_at_columns(self):
+        for cls in Model.__subclasses__():
+            cls_name = cls.__name__
+            if "created_at" in cls._meta.fields:
+                self.created_at_table_names.append(cls_name.casefold())
+            if "updated_at" in cls._meta.fields:
+                self.updated_at_table_names.append(cls_name.casefold())
+
               
 async def create_trigger_functions():
     await Tortoise.init(
@@ -47,9 +52,11 @@ async def execute_triggers():
             await conn.execute_script(auto_handle_created_at)
         await Trigger.create(name = "auto_handle_created_at")
         created_at_trigger_details = await Trigger.filter(name = "auto_handle_created_at")
+
+    table = Tables()
     
     not_triggered_created_at_tables = []
-    for table in created_at_table_names:
+    for table in table.created_at_table_names:
         if created_at_trigger_details[0].trigger_details.get(table) is None or not created_at_trigger_details[0].trigger_details.get(table):
             not_triggered_created_at_tables.append(table)
     
@@ -61,7 +68,7 @@ async def execute_triggers():
         updated_at_trigger_details = await Trigger.filter(name = "auto_handle_updated_at")
         
     not_triggered_updated_at_tables = []
-    for table in updated_at_table_names:
+    for table in table.updated_at_table_names:
         if updated_at_trigger_details[0].trigger_details.get(table) is None or not updated_at_trigger_details[0].trigger_details.get(table):
             not_triggered_updated_at_tables.append(table)
     
@@ -90,13 +97,12 @@ async def create_superuser(
     async def save_data(
         username, password, name, phone_number, address_line1, address_line2, city, add_code, email, designation
     ):
+        permissions_json = {}
         hashed_pwd = pwd_context.hash(password)
         user = await UserDB.create(username=username, password=hashed_pwd)
-        permission = await Permission.create(permissions_json={"all_auth": True}, designation=designation, role="appstaff")
         
         appstaff = await AppStaff.create(
             user = user,
-            permission = permission,
             name = name,
             phone_number = phone_number,
             email = email,
@@ -106,7 +112,7 @@ async def create_superuser(
             address_city = city
         )
         
-        await Designation.create(user=user, role="appstaff", designation=designation, permission=permission, role_instance_id=appstaff.id)
+        await Designation.create(user=user, role="appstaff", designation=designation, permissions_json=permissions_json, role_instance_id=appstaff.id)
     await save_data(username, password, name, phone_number, address_line1, address_line2, city, add_code, email, designation)
 
 def check_null(field, value):
@@ -172,7 +178,7 @@ if __name__ == "__main__":
         print(Fore.GREEN)
         address_code = input("Input Address Code")
         check_null("address_code", address_code)
-        designation="CoFounder"
+        designation="App Admin"
         run_async(create_superuser(
             name=name,
             phone_number=phone_number,

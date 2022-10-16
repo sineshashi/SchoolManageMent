@@ -14,7 +14,6 @@ from tortoise.contrib.fastapi import register_tortoise
 from project.config import CORS_CONFIG, DBURL, DOCS_ENABLED
 
 from .custom_openapi import custom_openapi
-from .shared.redis_cofig import sync_r, deserialize
 
 if DOCS_ENABLED:
     app = FastAPI()
@@ -46,6 +45,11 @@ app.add_middleware(
 def get_config():
     return authCofig.JWTSettings()
 
+@AuthJWT.token_in_denylist_loader
+def verify_token_if_not_disabled(_decrypted_token):
+    #For advanced implementation
+    return False
+
 
 @app.exception_handler(AuthJWTException)
 def authjwt_exception_handler(request: Request, exc: AuthJWTException):
@@ -54,23 +58,8 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
         content={"detail": exc.message}
     )
 
-
-'''
-This will not let pass through those requests whose token is saved as key and value as True in redis.
-'''
-
-
-@AuthJWT.token_in_denylist_loader
-def check_if_token_in_denylist(decrypted_token):
-    jti = decrypted_token['jti']
-    entry = sync_r.get(jti)
-    if entry is not None:
-        entry = deserialize(entry, picklify=True)
-    return entry and entry == True
-
-
 db_config = generate_config(db_url=DBURL, app_modules={"models": [
-                            "project.models", "aerich.models", "auth.auth_models"]})
+                            "db_management.models", "aerich.models"]})
 
 register_tortoise(app=app, config=db_config,
                   generate_schemas=True, add_exception_handlers=True)

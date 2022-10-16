@@ -4,10 +4,10 @@ and filling incorrect data in database.
 '''
 
 from typing import List
-from ..models import Admin, AppStaff, PermissionLevelEnum, RolesEnum, SuperAdmin
+from db_management.models import Admin, AppStaff, InstituteStaff, RolesEnum, SuperAdmin
 from pydantic import BaseModel, validator
-from fastapi.exceptions import HTTPException
 from typing import Optional
+import enum
 
 #Maintain below Role Enum and getRoleModelFuntion for each new class extending User model.
 
@@ -19,16 +19,18 @@ def getRoleModel(role: str):
         return SuperAdmin
     elif role == "admin":
         return Admin
+    elif role == "institutestaff":
+        return InstituteStaff
 
 #Below are the permissions defined role wise.
+
+class RolesEnumForInstitutes(str, enum.Enum):
+    "superadmin"
 
 class PermittedRoles(BaseModel):
     create_designation_in_roles: List[RolesEnum]
     authorize_to_create_designation_in_roles: List[RolesEnum]
     authorize_to_permit_others_for_creation_in_roles: List[RolesEnum]
-    create_permission_levels: List[PermissionLevelEnum]
-    authorize_to_create_permission_levels: List[PermissionLevelEnum]
-    authorize_to_permit_others_for_creation_in_levels: List[PermissionLevelEnum]
 
 
 class AppStaffPermissions(BaseModel):
@@ -49,3 +51,6 @@ class SuperAdminPermissions(BaseModel):
 
 class AdminPermissions(BaseModel):
     institute_level_all_auth: bool = True
+
+class InstituteStaffPermissions(BaseModel):
+    institute_level_all_auth: bool = False
