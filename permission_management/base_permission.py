@@ -67,3 +67,19 @@ def is_app_admin(permission_data: PermissionReturnDataType):
 @PermissionManager.validate()
 def is_app_staff(permission_data: PermissionReturnDataType):
     return permission_data.role == "appstaff"
+
+@PermissionManager.validate(optional=True)
+def is_app_staff_or_none(permission_data: PermissionReturnDataType):
+    return permission_data.role == "appstaff" or permission_data.role is None
+
+@PermissionManager.validate()
+def is_super_admin(permission_data: PermissionReturnDataType):
+    return permission_data.role == "superadmin"
+
+@PermissionManager.validate()
+def is_admin(permission_data: PermissionReturnDataType):
+    return permission_data.role == "admin"
+
+@PermissionManager.validate()
+def is_app_staff_or_super_admin(permission_data: PermissionReturnDataType):
+    return permission_data.role == "appstaff" or permission_data.role == "superadmin"

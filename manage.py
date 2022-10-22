@@ -25,7 +25,6 @@ class Tables:
             if "updated_at" in cls._meta.fields:
                 self.updated_at_table_names.append(cls_name.casefold())
 
-              
 async def create_trigger_functions():
     await Tortoise.init(
         db_url=DBURL,
@@ -53,10 +52,11 @@ async def execute_triggers():
         await Trigger.create(name = "auto_handle_created_at")
         created_at_trigger_details = await Trigger.filter(name = "auto_handle_created_at")
 
-    table = Tables()
-    
+    tables = Tables()
+    tables.get_all_table_names_with_created_at_or_updated_at_columns()
+
     not_triggered_created_at_tables = []
-    for table in table.created_at_table_names:
+    for table in tables.created_at_table_names:
         if created_at_trigger_details[0].trigger_details.get(table) is None or not created_at_trigger_details[0].trigger_details.get(table):
             not_triggered_created_at_tables.append(table)
     
@@ -68,7 +68,7 @@ async def execute_triggers():
         updated_at_trigger_details = await Trigger.filter(name = "auto_handle_updated_at")
         
     not_triggered_updated_at_tables = []
-    for table in table.updated_at_table_names:
+    for table in tables.updated_at_table_names:
         if updated_at_trigger_details[0].trigger_details.get(table) is None or not updated_at_trigger_details[0].trigger_details.get(table):
             not_triggered_updated_at_tables.append(table)
     
