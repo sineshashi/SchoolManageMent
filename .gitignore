@@ -1,4 +1,6 @@
 env
-/migrations
 **.pyc
+/local_migrations
+/migrations
+/pyproject.toml
 **.toml

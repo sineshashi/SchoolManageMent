@@ -2,7 +2,7 @@ import sys, subprocess, time
 from colorama import Fore
 from tortoise import run_async, Tortoise
 from db_management.models import RolesEnum
-from project.config import DBURL
+from project.config import DBURL, MIGRATION_LOCATION
 from tortoise.transactions import in_transaction, atomic
 from db_management.models import Trigger, UserDB, AppStaff, Designation
 from project.sql.sql_queries import auto_handle_created_at, auto_handle_updated_at, auto_now_add_trigger, auto_now_trigger
@@ -123,7 +123,7 @@ def check_null(field, value):
 
 if __name__ == "__main__":
     if sys.argv == ["manage.py", "init-db"]:
-        subprocess.run(["aerich", "init", "-t", "project.main.db_config"])
+        subprocess.run(["aerich", "init", "-t", "project.main.db_config", "--location", MIGRATION_LOCATION])
         subprocess.run(["aerich", "init-db"])
         print(Fore.YELLOW, "Creating triggers.")
         run_async(execute_triggers())
