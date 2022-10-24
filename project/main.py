@@ -1,6 +1,7 @@
 import appstaff.appstaff_management.asm_apis as asm_apis
 import auth.auth_apis as auth_apis
 import appstaff.onboarding.onboard_apis as onboarding_apis
+import institute_staff_management.ism_apis as ism_apis
 import auth.auth_config as authCofig
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -80,4 +81,10 @@ app.include_router(
     router=onboarding_apis.router,
     prefix="/onboarding",
     tags=["Onboarding"]
+)
+
+app.include_router(
+    router=ism_apis.router,
+    prefix="/ism",
+    tags = ["Institute Staff Management"]
 )

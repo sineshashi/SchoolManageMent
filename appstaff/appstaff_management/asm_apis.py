@@ -2,7 +2,7 @@ from lib2to3.pgen2 import token
 from fastapi.routing import APIRouter
 from db_management.designations import DesignationManager
 from db_management.models import RolesEnum, UserDB, Designation, AppStaff
-from permission_management.base_permission import PermissionReturnDataType, is_app_admin, is_app_staff
+from permission_management.base_permission import union_of_all_permission_types, is_app_admin, is_app_staff
 from .asm_datatypes import appstaffDataTypeIn, designationDataTypeOut, appstaffDataTypeOut
 from fastapi import Depends
 from tortoise.transactions import atomic
@@ -22,7 +22,7 @@ async def create_new_staff(
     profileData: appstaffDataTypeIn,
     designation: str,
     designation_start_time: Optional[datetime.datetime] = None,
-    tokenData: PermissionReturnDataType=Depends(is_app_admin)
+    tokenData: union_of_all_permission_types=Depends(is_app_admin)
     ):
         if designation_start_time is not None:
             designation_start_time.astimezone("utc")
@@ -43,7 +43,7 @@ async def create_new_staff(
         return {"appstaff":await appstaffDataTypeOut.from_queryset_single(AppStaff.get(id = appstaff.id)), "designation": await designationDataTypeOut.from_queryset_single(Designation.get(id=designation_instance.id))}
 
 @router.get("/getProfileAndDesignationData")
-async def get_all_data_for_user(token_data: PermissionReturnDataType=Depends(is_app_staff)):
+async def get_all_data_for_user(token_data: union_of_all_permission_types=Depends(is_app_staff)):
     user_id = token_data.user_id
     app_staff_data = await AppStaff.filter(user_id=user_id, active=True, blocked=False).values()
     if len(app_staff_data) != 1:
@@ -60,5 +60,5 @@ async def get_all_data_for_user(token_data: PermissionReturnDataType=Depends(is_
     return {"app_staff_data": app_staff_data[0], "designation_data": designation_data[0]}
     
 @router.get("/getAllAppStaffData")
-async def get_all_appstaff_data(token_data: PermissionReturnDataType = Depends(is_app_staff)):
+async def get_all_appstaff_data(token_data: union_of_all_permission_types = Depends(is_app_staff)):
     return await AppStaff.filter(active=True, blocked=False).values()

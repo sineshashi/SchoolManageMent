@@ -75,7 +75,7 @@ def custom_openapi(  # noqa: C901, WPS210, WPS231
             sources = inspect.getsource(route.endpoint)
             # Handler requires JWT auth if any of these words
             # exist in handler's source code.
-            jwt_flags = ["jwt_required", "fresh_jwt_required", "jwt_optional", "jwt_refresh_token_required", "PermissionReturnDataType"]
+            jwt_flags = ["jwt_required", "fresh_jwt_required", "jwt_optional", "jwt_refresh_token_required", "union_of_all_permission_types"]
             for method in route.methods:
                 # If handler has jwt_flag inside its source code
                 # we add security schema in swagger spec.

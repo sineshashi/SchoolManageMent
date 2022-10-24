@@ -5,13 +5,14 @@ from fastapi.routing import APIRouter
 from fastapi import Depends
 from appstaff.onboarding.onboard_datatypes import SuperAdminDataTypeIn, AdminDataTypeIn
 from tortoise.transactions import atomic
+from db_management.designations import DesignationManager
 from db_management.models import Admin, Designation, RolesEnum, SuperAdmin, UserDB
-from permission_management.base_permission import PermissionReturnDataType, is_app_staff
+from permission_management.base_permission import is_app_staff_or_admin_under_super_admin, union_of_all_permission_types, is_app_staff, is_app_staff_or_admin, is_app_staff_or_super_admin, is_fresh_appstaff
 
 router = APIRouter()
 
 @router.post("/onboardSuperAdmin")
-async def create_superadmin(username: str, super_admin_data: SuperAdminDataTypeIn, designation: str, from_time_at_designation:Optional[datetime]=None, token_data: PermissionReturnDataType=Depends(is_app_staff)):
+async def create_superadmin(username: str, super_admin_data: SuperAdminDataTypeIn, designation: DesignationManager.role_designation_map["superadmin"], from_time_at_designation:Optional[datetime]=None, token_data: union_of_all_permission_types=Depends(is_app_staff)):
     created_by_id = token_data.user_id
     from_time=None
     if from_time_at_designation is not None:
@@ -51,7 +52,7 @@ async def create_superadmin(username: str, super_admin_data: SuperAdminDataTypeI
     return await on_board_atomically()
 
 @router.post("/onboardAdmin")
-async def create_admin(super_admin_id: int, designation: str, username: str, admin_data: AdminDataTypeIn, from_time_at_designation:Optional[datetime]=None, token_data: PermissionReturnDataType=Depends(is_app_staff)):
+async def create_admin(super_admin_id: int, designation: DesignationManager.role_designation_map["admin"], username: str, admin_data: AdminDataTypeIn, from_time_at_designation:Optional[datetime]=None, token_data: union_of_all_permission_types=Depends(is_app_staff)):
     superadmindetails = await SuperAdmin.filter(id=super_admin_id)
     if len(superadmindetails) == 0 or not superadmindetails[0].active or superadmindetails[0].blocked:
         raise HTTPException(406, "This super admin does not exists")
@@ -91,5 +92,53 @@ async def create_admin(super_admin_id: int, designation: str, username: str, adm
         }
     return await on_board_atomically()
 
-# @router.get("/activateSuperAdmin/{super_admin_id}")
-# async def activate_super_admin_accout(super_admin_id: int, token_data: PermissionReturnDataType = Depends())
+@router.get("/editSuperAdminData")
+async def edit_super_admin_data(super_admin_id: int, super_admin_data: SuperAdminDataTypeIn, token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin)):
+    if token_data.role == RolesEnum.superadmin and token_data.role_instance_id != super_admin_id:
+        raise HTTPException(401, "You are not authorized for the action.")
+
+    updated_by = token_data.user_id
+    await SuperAdmin.filter(id = token_data.role_instance_id).update(**super_admin_data.dict(), updated_by_id = updated_by)
+    return await SuperAdmin.filter(id = token_data.role_instance_id).values()[0]
+
+@router.get("/editAdminData")
+async def edit_admin_data(admin_id: int, admin_data: AdminDataTypeIn, token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin)):
+    if token_data.role == RolesEnum.admin and token_data.role_instance_id != admin_id:
+        raise HTTPException(401, "You are not authorized for the action.")
+
+    await Admin.filter(id = token_data.role_instance_id).update(**admin_data.dict())
+    return await Admin.filter(id = token_data.role_instance_id).values()[0]
+
+@router.delete("/disableSuperAdmin")
+async def disable_super_admin(super_admin_id: int, token_data: union_of_all_permission_types = Depends(is_fresh_appstaff)):
+    await Designation.filter(role=RolesEnum.superadmin, role_instance_id = super_admin_id).update(active=False)
+    await SuperAdmin.filter(id = super_admin_id).update(active=False)
+    return {"success": True}
+
+@router.delete("/disableAdmin")
+async def disable_super_admin(admin_id: int, token_data: union_of_all_permission_types = Depends(is_fresh_appstaff)):
+    await Designation.filter(role=RolesEnum.admin, role_instance_id = admin_id).update(active=False)
+    await Admin.filter(id = admin_id).update(active=False)
+    return {"success": True}
+
+@router.get("/listAllSuperAdmins")
+async def fetch_all_active_super_admins(token_data: union_of_all_permission_types = Depends(is_app_staff)):
+    return await SuperAdmin.filter(active=True, blocked=False).values()
+
+@router.get("/listAllAdmins")
+async def fetch_all_active_admins(token_data: union_of_all_permission_types = Depends(is_app_staff)):
+    return await Admin.filter(active=True, blocked=False).values()
+
+@router.get("/getSuperAdminData")
+async def get_super_admin_data_active_or_not_active(super_admin_id: int, token_data: union_of_all_permission_types = Depends(is_app_staff_or_admin_under_super_admin)):
+    return {
+        "super_admin_data": await SuperAdmin.get(id=super_admin_id).values(),
+        "designation_data": await Designation.filter(role=RolesEnum.superadmin, role_instance_id = super_admin_id)
+    }
+
+@router.get("/getAdminData")
+async def get_super_admin_data_active_or_not_active(admin_id: int, token_data: union_of_all_permission_types = Depends(is_app_staff_or_admin_under_super_admin)):
+    return {
+        "super_admin_data": await Admin.get(id=admin_id).values(),
+        "designation_data": await Designation.filter(role=RolesEnum.admin, role_instance_id = admin_id)
+    }

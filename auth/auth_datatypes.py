@@ -1,20 +1,12 @@
+from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional
+from typing import Dict, Optional
 from pydantic import validator
 
 class UserLoginIN(BaseModel):
     username: str
     password: str
     
-class DeviceIN(BaseModel):
-    device_model: str = ""
-    platform: str = ""
-    os_version: str = ""
-    operating_system: str = ""
-    manufacturer: str = ""
-    browser_name: str = ""
-    device_location: Optional[str] = None
-
 class UserCreateDataTypeIn(BaseModel):
     username: str
     password1: str
@@ -36,3 +28,15 @@ class UserCreateDataTypeIn(BaseModel):
     def username_alphanumeric(cls, v):
         assert v.isalnum(), 'must be alphanumeric'
         return v
+
+class UserDataType(BaseModel):
+    user_id: int
+    username: str
+    active: bool
+
+class DesignationDataTypeOutForAuth(BaseModel):
+    designation_id: int
+    designation: str
+    role: str
+    role_instance_id: int
+    permission_json: Dict = {} #This is the default. Handle in later when project grows.
