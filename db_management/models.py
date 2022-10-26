@@ -1,5 +1,7 @@
 from tortoise.models import Model
 from tortoise import fields
+
+from db_management.db_enums import EducationLevelEnum, EducationStatusEnum
 from .custom_fields import UTCDateTimeField
 import enum
 from db_management.db_validators import validate_email, validate_phone_number
@@ -145,20 +147,23 @@ class InstituteStaff(Model):
     updated_at = UTCDateTimeField(null=True)
     created_by = fields.ForeignKeyField("models.UserDB", related_name="created_institute_staffs", on_delete=fields.SET_NULL, null=True)
 
-# class EducationDetail(Model):
-#     id = fields.IntField(pk=True)
-#     user = fields.ForeignKeyField("models.UserDB", "education_details", fields.CASCADE, index=True)
-#     level = fields.CharField(max_length=255, null=False)
-#     course = fields.TextField(null=False)
-#     semester_or_year = fields.IntField(default=0) #0 means semester or year not applicable.
-#     year = fields.IntField(null=False)
-#     school_or_college = fields.TextField(null=False)
-#     board_or_university = fields.TextField(null=False)
-#     subjects = fields.JSONField(null = False, default = [])
-#     obtained_marks = fields.FloatField(null = True)
-#     maximum_marks = fields.FloatField(null = True)
-#     grade = fields.CharField(max_length=5, null = True)
-#     #keep maximum_marks and grade null to show appearing.
-#     created_at = UTCDateTimeField(null=True)
-#     updated_at = UTCDateTimeField(null=True)
-#     updated_by = fields.ForeignKeyField("models.UserDB", "updated_education_details", fields.SET_NULL, null=True)
+class EducationDetail(Model):
+    id = fields.IntField(pk=True)
+    institute_staff = fields.ForeignKeyField("models.InstituteStaff", "education_details", on_delete=fields.CASCADE, index=True)
+    level = fields.CharEnumField(EducationLevelEnum, max_length=55, index=True)
+    course = fields.TextField(null=False)
+    semester_or_year = fields.IntField(default=0) #0 means semester or year not applicable.
+    roll_number = fields.IntField(null=True)
+    year = fields.IntField(null=False)
+    institute_name = fields.TextField(null=False)
+    board_or_university = fields.TextField(null=False)
+    status = fields.CharEnumField(EducationStatusEnum, max_length=20, null=False)
+    subjects = fields.JSONField(null = False, default = [])
+    obtained_marks = fields.FloatField(null = True)
+    maximum_marks = fields.FloatField(null = True)
+    grade = fields.CharField(max_length=20, null = True)
+    docurl = fields.TextField(null=True)
+    active = fields.BooleanField(default=True, index=True)
+    created_at = UTCDateTimeField(null=True)
+    updated_at = UTCDateTimeField(null=True)
+    updated_by = fields.ForeignKeyField("models.UserDB", "updated_education_details", fields.SET_NULL, null=True)

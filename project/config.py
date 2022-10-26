@@ -1,5 +1,5 @@
 DOCS_ENABLED = True
-ENV = "prod"
+ENV = "local"
 
 CORS_CONFIG = {
     "ALLOWED_HOSTS": ["http://localhost:8000"],

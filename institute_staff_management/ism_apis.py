@@ -2,12 +2,12 @@ from venv import create
 from fastapi import APIRouter, Depends
 from db_management.db_sql_and_functions import get_list_of_all_staffs_with_designation
 from db_management.designations import DesignationManager
-from db_management.models import Designation, InstituteStaff, RolesEnum, UserDB
-from permission_management.institute_staff_permissions import can_add_insititute_staff, can_view_institute_staff
-from .ism_datatypes import DesignationDataTypeForInstituteStaff, institute_staff_data_type
+from db_management.models import Designation, EducationDetail, InstituteStaff, RolesEnum, UserDB
+from permission_management.institute_staff_permissions import can_add_education_details_for_staff, can_add_insititute_staff, can_delete_institute_staff, can_disable_education_details_for_staff, can_view_education_details_of_institute_staff, can_view_institute_staff
+from .ism_datatypes import DesignationDataTypeForInstituteStaff, EducationDetailDataType, institute_staff_data_type
 from permission_management.base_permission import InstituteStaffPermissionJsonType, union_of_all_permission_types
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from tortoise.transactions import atomic
 from fastapi.exceptions import HTTPException
 
@@ -90,3 +90,38 @@ async def edit_designation_data_permission_data_for_staff(designation_id:int, ad
         permissions_json = designation_data.permissions_json.dict()
     )
     return Designation.filter(id=designation_id)
+
+@router.delete("/disableInstituteStaff")
+async def disable_institute_staff_of_given_ids(staff_ids: List[int], admin_id:int, deactivation_reason: Optional[str]=None, token_data: union_of_all_permission_types=Depends(can_delete_institute_staff)):
+    await Designation.filter(role=RolesEnum.institutestaff, role_instance_id__in=staff_ids).update(active=False, deactivated_at = datetime.now(), deactivation_reason=deactivation_reason)
+    await InstituteStaff.filter(id__in=staff_ids).update(active=False, created_by_id = token_data.user_id)
+    return {"success": True}
+
+@router.post("/addEducationDetails")
+async def add_education_detail_for_staff(staff_id: int, admin_id: int, education_data: EducationDetailDataType, token_data: union_of_all_permission_types=Depends(can_add_education_details_for_staff)):
+    created_education_details_instance = await EducationDetail.create(
+        **education_data.dict(),
+        institute_staff_id = staff_id,
+        updated_by_id = token_data.user_id
+    )
+    return await EducationDetail.get(id=created_education_details_instance.id).values()
+
+@router.get("/getAllEducationDetailsOfStaff")
+async def get_all_educational_qualifications_of_staff(staff_id: int, admin_id: int, token_data: union_of_all_permission_types=Depends(can_view_education_details_of_institute_staff)):
+    return await EducationDetail.filter(institute_staff_id = staff_id, active=True).values()
+
+@router.put("/editEducationalDetails")
+async def edit_education_details(education_detail_id: int, admin_id: int, education_data: EducationDetailDataType, token_data: union_of_all_permission_types=Depends(can_add_education_details_for_staff)):
+    await EducationDetail.filter(id=education_detail_id).update(
+        **education_data.dict(),
+        updated_by_id = token_data.user_id
+    )
+    return await EducationDetail.get(id=education_detail_id).values()
+
+@router.delete("/disableEducationDetails")
+async def delete_education_details(education_detail_id: int, admin_id: int, token_data: union_of_all_permission_types=Depends(can_disable_education_details_for_staff)):
+    await EducationDetail.filter(id=education_detail_id).update(
+        active=False,
+        updated_by_id = token_data.user_id
+    )
+    return {"success": True}
