@@ -2,7 +2,7 @@ DOCS_ENABLED = True
 ENV = "prod"
 
 CORS_CONFIG = {
-    "ALLOWED_HOSTS": ["http://localhost:8000"],
+    "ALLOWED_HOSTS": ["*"],
     "ALLOWED_METHODS": ["*"],
     "EXPOSE_HEADERS": ["set-cookie"],
     "ALLOWED_HEADERS": ["*"],
