@@ -13,7 +13,6 @@ DB_CONFIG = {
     "USER": "sms_dev",
     "DBNAME": "smsdb",
     "PASSWORD": "sms@dev", #Local
-    # "PASSWORD": "QnulMOBI88621M7wkTSHw4E4QnTeM7jh", #Prod
     "PORT": 5432,
     "HOST": "localhost"
 }
@@ -22,7 +21,7 @@ if ENV == "local":
     MIGRATION_LOCATION = "./local_migrations"
 
 elif ENV == "prod":
-    DBURL = "postgres://sms_dev:QnulMOBI88621M7wkTSHw4E4QnTeM7jh@dpg-ccem9kun6mpt4gqtf15g-a.singapore-postgres.render.com/smsdb"
+    DBURL = "postgres://schooldb_kd4s_user:Ib8wfCVoCtMY5HNSlniT8W1jkgYUiKml@dpg-cefbki5a499e21q8d670-a.singapore-postgres.render.com/schooldb_kd4s"
     MIGRATION_LOCATION = "./prod_migrations"
 
 DEPLOYMENT_DETAILS = {
