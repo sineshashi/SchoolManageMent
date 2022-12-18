@@ -13,3 +13,9 @@ class EducationStatusEnum(str, Enum):
     passed = "Passed"
     failed = "Failed"
     appearing = "Appearing"
+
+class IdentityProofEnum(str, Enum):
+    aadhar = "AADHAR CARD"
+    pan_card = "PAN CARD"
+    driving_licence = "Driving Licence"
+    passport = "PASSPORT"

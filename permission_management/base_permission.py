@@ -40,7 +40,10 @@ class AdminPermissionReturnDataType(PermissionReturnDataType):
 class InstituteStaffPermissionJsonType(BaseModel):
     is_db_manager: bool = False
     is_teacher: bool = False
-
+    head_of_subject_groupids: List[int]=[]
+    vice_head_of_subject_groupids: List[int]=[]
+    head_of_subject_ids: List[int]=[]
+    vice_head_of_subject_ids: List[int]=[]
 
 class InstituteStaffPermissionReturnType(PermissionReturnDataType):
     permissions_json: InstituteStaffPermissionJsonType

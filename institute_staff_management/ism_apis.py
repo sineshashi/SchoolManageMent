@@ -1,4 +1,3 @@
-from venv import create
 from fastapi import APIRouter, Depends
 from db_management.db_sql_and_functions import get_list_of_all_staffs_with_designation
 from db_management.designations import DesignationManager
