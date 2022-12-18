@@ -52,7 +52,7 @@ async def create_superadmin(username: str, super_admin_data: SuperAdminDataTypeI
     return await on_board_atomically()
 
 @router.post("/onboardAdmin")
-async def create_admin(super_admin_id: int, designation: DesignationManager.role_designation_map["admin"], username: str, admin_data: AdminDataTypeIn, from_time_at_designation:Optional[datetime]=None, token_data: union_of_all_permission_types=Depends(is_app_staff)):
+async def create_admin(super_admin_id: int, designation: DesignationManager.role_designation_map["admin"], username: str, admin_data: AdminDataTypeIn, from_time_at_designation:Optional[datetime]=None, token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin)):
     superadmindetails = await SuperAdmin.filter(id=super_admin_id)
     if len(superadmindetails) == 0 or not superadmindetails[0].active or superadmindetails[0].blocked:
         raise HTTPException(406, "This super admin does not exists")
@@ -130,7 +130,7 @@ async def fetch_all_active_admins(token_data: union_of_all_permission_types = De
     return await Admin.filter(active=True, blocked=False).values()
 
 @router.get("/getSuperAdminData")
-async def get_super_admin_data_active_or_not_active(super_admin_id: int, token_data: union_of_all_permission_types = Depends(is_app_staff_or_admin_under_super_admin)):
+async def get_super_admin_data_active_or_not_active(super_admin_id: int, token_data: union_of_all_permission_types = Depends(is_app_staff_or_super_admin)):
     return {
         "super_admin_data": await SuperAdmin.get(id=super_admin_id).values(),
         "designation_data": await Designation.filter(role=RolesEnum.superadmin, role_instance_id = super_admin_id)

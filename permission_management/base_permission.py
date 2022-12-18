@@ -20,6 +20,7 @@ class PermissionReturnDataType(BaseModel):
     role: Optional[str] = None
     designation: Optional[str] = None
     designation_id: Optional[int] = None
+    other_data: dict = {}
 
 
 class AppStaffPermissionReturnDataType(PermissionReturnDataType):

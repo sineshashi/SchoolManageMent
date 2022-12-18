@@ -7,11 +7,22 @@ from db_management.models import Admin, AppStaff, Designation, InstituteStaff, R
 from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
 from fastapi.exceptions import HTTPException
 from fastapi_jwt_auth import AuthJWT
-
+import datetime
+from pydantic import BaseModel
 
 def verify_password(raw, hashed):
     return pwd_context.verify(raw, hashed)
 
+def convert_datetime_of_vals_to_str(data: Union[dict, BaseModel]):
+    if not isinstance(data, dict):
+        try:
+            data = data.dict()
+        except:
+            raise HTTPException(500)
+    for k, v in data.items():
+        if isinstance(v, datetime.datetime):
+            data[k]=v.isoformat()
+    return data
 
 class TokenCreationManager:
     @staticmethod
@@ -70,15 +81,16 @@ class TokenCreationManager:
             raise HTTPException(
                 406, "Wrong data saved in db. Contact the staff as soon as possible.")
 
-        user_claims = AppStaffPermissionReturnDataType(user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id,
-                                                       role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id)
-        return {
-            "user_claims": user_claims,
-            "returning_data": {
-                "user_data": user_data,
-                "designation_data": designation_data,
-                "user_personal_data": app_staff_data.__dict__
+        other_data = {
+                "user_data": convert_datetime_of_vals_to_str(user_data),
+                "designation_data": convert_datetime_of_vals_to_str(designation_data),
+                "user_personal_data": convert_datetime_of_vals_to_str(app_staff_data.__dict__)
             }
+
+        user_claims = AppStaffPermissionReturnDataType(user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id,
+                                                       role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, other_data=other_data)
+        return {
+            "user_claims": user_claims
         }
 
     @staticmethod
@@ -100,15 +112,15 @@ class TokenCreationManager:
                 406, "Wrong data saved in db. Contact the staff as soon as possible.")
 
         admin_ids = await super_admin_data[0].admin.values_list("id", flat=True)
-        user_claims = SuperAdminPermissionReturnDataType(user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id,
-                                                         role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, admin_ids=admin_ids)
-        return {
-            "user_claims": user_claims,
-            "returning_data": {
-                "user_data": user_data,
-                "designation_data": designation_data,
-                "user_personal_data": super_admin_data.__dict__
+        other_data = {
+                "user_data": convert_datetime_of_vals_to_str(user_data),
+                "designation_data": convert_datetime_of_vals_to_str(designation_data),
+                "user_personal_data": convert_datetime_of_vals_to_str(super_admin_data.__dict__)
             }
+        user_claims = SuperAdminPermissionReturnDataType(user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id,
+                                                         role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, admin_ids=admin_ids, other_data=other_data)
+        return {
+            "user_claims": user_claims
         }
 
     @staticmethod
@@ -129,15 +141,15 @@ class TokenCreationManager:
             raise HTTPException(
                 406, "Wrong data saved in db. Contact the staff as soon as possible.")
 
-        user_claims = AdminPermissionReturnDataType(user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id, role=designation_data.role,
-                                                    designation=designation_data.designation, designation_id=designation_data.designation_id, super_admin_id=admin_data[0].super_admin_id)
-        return {
-            "user_claims": user_claims,
-            "returning_data": {
-                "user_data": user_data,
-                "designation_data": designation_data,
-                "user_personal_data": admin_data.__dict__
+        other_data = {
+                "user_data": convert_datetime_of_vals_to_str(user_data),
+                "designation_data": convert_datetime_of_vals_to_str(designation_data),
+                "user_personal_data": convert_datetime_of_vals_to_str(admin_data.__dict__)
             }
+        user_claims = AdminPermissionReturnDataType(user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id, role=designation_data.role,
+                                                    designation=designation_data.designation, designation_id=designation_data.designation_id, super_admin_id=admin_data[0].super_admin_id, other_data=other_data)
+        return {
+            "user_claims": user_claims
         }
 
     @staticmethod
@@ -159,16 +171,16 @@ class TokenCreationManager:
             raise HTTPException(
                 406, "Wrong data saved in db. Contact the staff as soon as possible.")
 
+        other_data = {
+                "user_data": convert_datetime_of_vals_to_str(user_data),
+                "designation_data": convert_datetime_of_vals_to_str(designation_data),
+                "user_personal_data": convert_datetime_of_vals_to_str(staff_data.__dict__)
+            }
         user_claims = InstituteStaffPermissionReturnType(
-            user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id, role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, admin_id=staff_other_data["admin_id"], super_admin_id=staff_other_data["super_admin_id"], permissions_json=designation_data.permission_json, super_admin_level=staff_data.super_admin_level)
+            user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id, role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, admin_id=staff_other_data["admin_id"], super_admin_id=staff_other_data["super_admin_id"], permissions_json=designation_data.permission_json, super_admin_level=staff_data.super_admin_level, other_data=other_data)
 
         return {
-            "user_claims": user_claims,
-            "returning_data": {
-                "user_data": user_data,
-                "designation_data": designation_data,
-                "user_personal_data": staff_data.__dict__
-            }
+            "user_claims": user_claims
         }
 
     @staticmethod
@@ -209,5 +221,4 @@ class TokenCreationManager:
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            **user_claims_and_personal_data["returning_data"]
         }
