@@ -73,8 +73,8 @@ class TokenCreationManager:
         except DoesNotExist:
             raise HTTPException(
                 401, "This user's appstaff account has been blocked or deactivated.")
-        except Exception:
-            raise Exception
+        except Exception as e:
+            raise e
         
         user_obtained_from_db = await app_staff_data.user.values(user_id = "user_id")
         if user_data.user_id != user_obtained_from_db["user_id"]:
