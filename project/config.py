@@ -1,5 +1,5 @@
 DOCS_ENABLED = True
-ENV = "local"
+ENV = "prod"
 
 CORS_CONFIG = {
     "ALLOWED_HOSTS": ["*"],

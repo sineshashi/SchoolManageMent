@@ -9,18 +9,18 @@ class UserLoginIN(BaseModel):
     
 class UserCreateDataTypeIn(BaseModel):
     username: str
-    password1: str
-    password2: str
+    password_1: str
+    password_2: str
 
-    @validator('password1')
+    @validator('password_1')
     def password_validate(cls, v):
         assert len(v) >= 8, 'password must be at least 8 chars long.'
         assert not v.isnumeric(), 'password must contain at least one alphabet.'
         return v
 
-    @validator('password2')
+    @validator('password_2')
     def passwords_match(cls, v, values, **kwargs):
-        if 'password1' in values and v != values['password1']:
+        if 'password_1' in values and v != values['password_1']:
             raise ValueError('passwords do not match')
         return v
 

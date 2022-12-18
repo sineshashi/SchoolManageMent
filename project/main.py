@@ -2,6 +2,7 @@ import appstaff.appstaff_management.asm_apis as asm_apis
 import auth.auth_apis as auth_apis
 import appstaff.onboarding.onboard_apis as onboarding_apis
 import institute_staff_management.ism_apis as ism_apis
+import institute_conf_management.icm_apis as icm_apis
 import auth.auth_config as authCofig
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,9 +16,6 @@ from tortoise.contrib.fastapi import register_tortoise
 from project.config import CORS_CONFIG, DBURL, DOCS_ENABLED
 
 from .custom_openapi import custom_openapi
-
-import re
-from starlette.routing import Route
 
 if DOCS_ENABLED:
     app = FastAPI()
@@ -92,6 +90,8 @@ app.include_router(
     tags = ["Institute Staff Management"]
 )
 
-for route in app.router.routes:
-    if isinstance(route, Route):
-        route.path_regex = re.compile(route.path_regex.pattern, re.IGNORECASE)
+app.include_router(
+    router=icm_apis.icm_router,
+    prefix="/icm",
+    tags = ["Institute Configuration Management"]
+)

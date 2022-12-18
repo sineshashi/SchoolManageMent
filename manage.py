@@ -87,7 +87,7 @@ async def execute_triggers():
     await updated_at_trigger_details[0].update_from_dict({"trigger_details": updated_at_trigger_json}).save()
  
 async def create_superuser(
-        username, password, name, phone_number, address_line1, address_line2, city, add_code, email, designation
+        username, password, name, phone_number, address_line_1, address_line_2, city, add_code, email, designation
     ):
     await Tortoise.init(
         db_url=DBURL,
@@ -95,7 +95,7 @@ async def create_superuser(
     )
     @atomic()
     async def save_data(
-        username, password, name, phone_number, address_line1, address_line2, city, add_code, email, designation
+        username, password, name, phone_number, address_line_1, address_line_2, city, add_code, email, designation
     ):
         permissions_json = {}
         hashed_pwd = pwd_context.hash(password)
@@ -106,14 +106,14 @@ async def create_superuser(
             name = name,
             phone_number = phone_number,
             email = email,
-            address_line1 = address_line1,
-            address_line2 = address_line2,
+            address_line_1 = address_line_1,
+            address_line_2 = address_line_2,
             address_code = add_code,
             address_city = city
         )
         
         await Designation.create(user=user, role="appstaff", designation=designation, permissions_json=permissions_json, role_instance_id=appstaff.id)
-    await save_data(username, password, name, phone_number, address_line1, address_line2, city, add_code, email, designation)
+    await save_data(username, password, name, phone_number, address_line_1, address_line_2, city, add_code, email, designation)
 
 def check_null(field, value):
     if value is not None and value.strip()!="":
@@ -167,11 +167,11 @@ if __name__ == "__main__":
         print(Fore.GREEN, "input email")
         email = input()
         check_null("email", email)
-        print(Fore.BLUE, "input address_line1")
-        address_line1 = input()
-        check_null("address_line1", address_line1)
-        print(Fore.GREEN, "input address_line2")
-        address_line2 = input()
+        print(Fore.BLUE, "input address_line_1")
+        address_line_1 = input()
+        check_null("address_line_1", address_line_1)
+        print(Fore.GREEN, "input address_line_2")
+        address_line_2 = input()
         print(Fore.BLUE, "input city")
         city = input()
         check_null("city", city)
@@ -186,8 +186,8 @@ if __name__ == "__main__":
             password=password,
             username=username,
             add_code=address_code,
-            address_line1=address_line1,
-            address_line2=address_line2,
+            address_line_1=address_line_1,
+            address_line_2=address_line_2,
             city=city,
             designation=designation
         ))
