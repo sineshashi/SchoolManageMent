@@ -16,6 +16,9 @@ from project.config import CORS_CONFIG, DBURL, DOCS_ENABLED
 
 from .custom_openapi import custom_openapi
 
+import re
+from starlette.routing import Route
+
 if DOCS_ENABLED:
     app = FastAPI()
     app.openapi = custom_openapi(
@@ -88,3 +91,7 @@ app.include_router(
     prefix="/ism",
     tags = ["Institute Staff Management"]
 )
+
+for route in app.router.routes:
+    if isinstance(route, Route):
+        route.path_regex = re.compile(route.path_regex.pattern, re.IGNORECASE)
