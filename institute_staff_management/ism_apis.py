@@ -10,6 +10,7 @@ from typing import List, Optional
 from tortoise.transactions import atomic
 from fastapi.exceptions import HTTPException
 from fastapi import Body
+from auth.auth_config import pwd_context
 
 router = APIRouter()
 
