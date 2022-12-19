@@ -9,13 +9,20 @@ from datetime import datetime
 from typing import List, Optional
 from tortoise.transactions import atomic
 from fastapi.exceptions import HTTPException
-from auth.auth_config import pwd_context
+from fastapi import Body
 
 router = APIRouter()
 
 
 @router.post("/addInstituteStaff")
-async def add_institute_staff_at_any_level(admin_id: int, username: str, designation: DesignationManager.role_designation_map[RolesEnum.institutestaff], staff_data: institute_staff_data_type, permission_json: InstituteStaffPermissionJsonType, from_time_at_designation: Optional[datetime] = None, token_data: union_of_all_permission_types = Depends(can_add_insititute_staff)):
+async def add_institute_staff_at_any_level(
+    staff_data: institute_staff_data_type,
+    permission_json: InstituteStaffPermissionJsonType,
+    admin_id: int=Body(embed=True),
+    username: str=Body(embed=True),
+    designation: DesignationManager.role_designation_map[RolesEnum.institutestaff]=Body(embed=True),
+    from_time_at_designation: Optional[datetime] = Body(embed=True, default=None),
+    token_data: union_of_all_permission_types = Depends(can_add_insititute_staff)):
     created_by_id = token_data.user_id
     from_time = None
     if from_time_at_designation is not None:

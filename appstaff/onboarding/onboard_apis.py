@@ -9,11 +9,18 @@ from db_management.designations import DesignationManager
 from db_management.models import Admin, Designation, RolesEnum, SuperAdmin, UserDB
 from permission_management.base_permission import is_app_staff_or_admin_under_super_admin, union_of_all_permission_types, is_app_staff, is_app_staff_or_admin, is_app_staff_or_super_admin, is_fresh_appstaff
 from auth.auth_config import pwd_context
+from fastapi import Body
 
 router = APIRouter()
 
 @router.post("/onboardSuperAdmin")
-async def create_superadmin(username: str, super_admin_data: SuperAdminDataTypeIn, designation: DesignationManager.role_designation_map["superadmin"], from_time_at_designation:Optional[datetime]=None, token_data: union_of_all_permission_types=Depends(is_app_staff)):
+async def create_superadmin(
+    super_admin_data: SuperAdminDataTypeIn,
+    designation: DesignationManager.role_designation_map["superadmin"]=Body(default=None, embed=True),
+    username: str=Body(default=None, embed=True),
+    from_time_at_designation:Optional[datetime]=Body(default=None, embed=True),
+    token_data: union_of_all_permission_types=Depends(is_app_staff)
+    ):
     created_by_id = token_data.user_id
     from_time=None
     if from_time_at_designation is not None:
@@ -71,7 +78,14 @@ async def create_superadmin(username: str, super_admin_data: SuperAdminDataTypeI
     return await on_board_atomically()
 
 @router.post("/onboardAdmin")
-async def create_admin(super_admin_id: int, designation: DesignationManager.role_designation_map["admin"], username: str, admin_data: AdminDataTypeIn, from_time_at_designation:Optional[datetime]=None, token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin)):
+async def create_admin(
+    admin_data: AdminDataTypeIn,
+    designation: DesignationManager.role_designation_map["admin"]=Body(embed=True),
+    username: str=Body(embed=True),
+    super_admin_id: int=Body(embed=True),
+    from_time_at_designation:Optional[datetime]=Body(embed=True, default=None),
+    token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin)
+    ):
     superadmindetails = await SuperAdmin.filter(id=super_admin_id)
     if len(superadmindetails) == 0 or not superadmindetails[0].active or superadmindetails[0].blocked:
         raise HTTPException(406, "This super admin does not exists")

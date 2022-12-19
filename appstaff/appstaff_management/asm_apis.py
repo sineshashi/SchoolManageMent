@@ -1,4 +1,3 @@
-from lib2to3.pgen2 import token
 from fastapi.routing import APIRouter
 from db_management.designations import DesignationManager
 from db_management.models import RolesEnum, UserDB, Designation, AppStaff
@@ -10,6 +9,7 @@ from fastapi.exceptions import HTTPException
 import datetime
 from typing import Optional
 from auth.auth_config import pwd_context
+from fastapi import Body
 
 router = APIRouter()
 
@@ -19,11 +19,11 @@ async def get_all_designations_for_role(role: RolesEnum):
 
 @router.post("/createNewAppStaff")
 async def create_new_staff(
-    username: str,
     profileData: appstaffDataTypeIn,
-    designation: str,
-    designation_start_time: Optional[datetime.datetime] = None,
-    tokenData: union_of_all_permission_types=Depends(is_app_admin)
+    tokenData: union_of_all_permission_types=Depends(is_app_admin),
+    username: str=Body(embed=True),
+    designation: str=Body(embed=True),
+    designation_start_time: Optional[datetime.datetime] = Body(default=None, embed=True),
     ):
         if designation_start_time is not None:
             designation_start_time.astimezone("utc")
