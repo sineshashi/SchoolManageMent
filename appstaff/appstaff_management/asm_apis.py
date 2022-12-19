@@ -9,6 +9,7 @@ from tortoise.transactions import atomic
 from fastapi.exceptions import HTTPException
 import datetime
 from typing import Optional
+from auth.auth_config import pwd_context
 
 router = APIRouter()
 
@@ -27,19 +28,32 @@ async def create_new_staff(
         if designation_start_time is not None:
             designation_start_time.astimezone("utc")
         user = await UserDB.get_or_none(username=username).values()
-        if user is None or not user["active"]:
+        if user is not None and not user["active"]:
             raise HTTPException(status_code=404, detail="No data found")
+        user_found = True
+        if user is None:
+            user_found=False
 
         @atomic()
         async def create_staff():
+            password = None
+            if not user_found:
+                dob: datetime.date = profileData.dob
+                password = dob.isoformat()
+                password = "".join(password.split("-"))
+                user = await UserDB.create(username=username, password=pwd_context.hash(password))
+                user = await UserDB.get_or_none(user_id=user.user_id).values()
             if await Designation.exists(user_id=user["user_id"], active=True):
                 raise HTTPException(405, "This user has already a different role.")
+            
             if not DesignationManager.validate_designation("appstaff", designation):
                 raise HTTPException(405, "Not a valid designation.")
             appstaff = await AppStaff.create(**profileData.dict(), user_id = user["user_id"], update_by_id = tokenData.user_id)
             designation_instance = await Designation.create(role="appstaff", role_instance_id = appstaff.id, user_id = user["user_id"], designation=designation, from_time=designation_start_time)
-            return appstaff, designation_instance
-        appstaff, designation_instance = await create_staff()
+            return appstaff, designation_instance, password
+        appstaff, designation_instance, password = await create_staff()
+        if password is not None:
+            return {"appstaff":await appstaffDataTypeOut.from_queryset_single(AppStaff.get(id = appstaff.id)), "designation": await designationDataTypeOut.from_queryset_single(Designation.get(id=designation_instance.id)), "login_credentials": {"username": username, "password": password}}
         return {"appstaff":await appstaffDataTypeOut.from_queryset_single(AppStaff.get(id = appstaff.id)), "designation": await designationDataTypeOut.from_queryset_single(Designation.get(id=designation_instance.id))}
 
 @router.get("/getProfileAndDesignationData")

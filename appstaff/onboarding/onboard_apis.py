@@ -8,6 +8,7 @@ from tortoise.transactions import atomic
 from db_management.designations import DesignationManager
 from db_management.models import Admin, Designation, RolesEnum, SuperAdmin, UserDB
 from permission_management.base_permission import is_app_staff_or_admin_under_super_admin, union_of_all_permission_types, is_app_staff, is_app_staff_or_admin, is_app_staff_or_super_admin, is_fresh_appstaff
+from auth.auth_config import pwd_context
 
 router = APIRouter()
 
@@ -26,8 +27,19 @@ async def create_superadmin(username: str, super_admin_data: SuperAdminDataTypeI
             user_id = "user_id",
             active = "active"
         )
-        if len(user) != 1:
-            raise HTTPException(406, "No user with this username exists.")
+        password = None
+        if len(user) == 0:
+            dob: datetime.date = super_admin_data.dob
+            password = dob.isoformat()
+            password = "".join(password.split("-"))
+            user = await UserDB.create(username=username, password=pwd_context.hash(password))
+            user = await UserDB.filter(user_id=user.user_id).values(
+                username="username",
+                created_at="created_at",
+                updated_at="updated_at",
+                user_id = "user_id",
+                active = "active"
+            )
 
         if await Designation.exists(user_id = user[0]["user_id"], active = True):
             raise HTTPException(406, "User already assigned to some other role or designation.")
@@ -44,11 +56,18 @@ async def create_superadmin(username: str, super_admin_data: SuperAdminDataTypeI
         
         super_admin = await SuperAdmin.filter(id=superadmin.id).values()
         designation_data = await Designation.filter(id=designation_instance.id).values()
+        if password is None:
+            return {
+                "user": user[0],
+                "super_admin": super_admin[0],
+                "designation": designation_data[0]
+            }
         return {
-            "user": user[0],
-            "super_admin": super_admin[0],
-            "designation": designation_data[0]
-        }
+                "user": user[0],
+                "super_admin": super_admin[0],
+                "designation": designation_data[0],
+                "login_credentials": {"username": username, "password": password}
+            }
     return await on_board_atomically()
 
 @router.post("/onboardAdmin")
@@ -68,11 +87,25 @@ async def create_admin(super_admin_id: int, designation: DesignationManager.role
             user_id = "user_id",
             active = "active"
         )
-    if len(user) == 0:
-        raise HTTPException(406, "No user with username exists.")
-
+    user_found = True
+    if len(user)==0:
+        user_found = False
+    
     @atomic()
     async def on_board_atomically():
+        password = None
+        if not user_found:
+            dob: datetime.date = admin_data.dob
+            password = dob.isoformat()
+            password = "".join(password.split("-"))
+            user = await UserDB.create(username=username, password=pwd_context.hash(password))
+            user = await UserDB.filter(user_id=user.user_id).values(
+                username="username",
+                created_at="created_at",
+                updated_at="updated_at",
+                user_id = "user_id",
+                active = "active"
+            )
         admin_data_dict = admin_data.dict()
         admin = await Admin.create(**admin_data_dict, created_by_id=created_by_id, user_id=user[0]["user_id"], super_admin_id=super_admin_id)
         designation_instance = await Designation.create(
@@ -85,11 +118,18 @@ async def create_admin(super_admin_id: int, designation: DesignationManager.role
 
         admin = await Admin.filter(id=admin.id).values()
         designation_data = await Designation.filter(id=designation_instance.id).values()
+        if password is None:
+            return {
+                "user": user[0],
+                "super_admin": admin[0],
+                "designation": designation_data[0]
+            }
         return {
-            "user": user[0],
-            "admin": admin[0],
-            "designation": designation_data[0]
-        }
+                "user": user[0],
+                "super_admin": admin[0],
+                "designation": designation_data[0],
+                "login_credentials": {"username": username, "password": password}
+            }
     return await on_board_atomically()
 
 @router.get("/editSuperAdminData")

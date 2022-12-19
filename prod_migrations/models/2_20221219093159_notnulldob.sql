@@ -1,0 +1,8 @@
+-- upgrade --
+ALTER TABLE "admin" ALTER COLUMN "dob" SET NOT NULL;
+ALTER TABLE "appstaff" ALTER COLUMN "dob" SET NOT NULL;
+ALTER TABLE "superadmin" ALTER COLUMN "dob" SET NOT NULL;
+-- downgrade --
+ALTER TABLE "admin" ALTER COLUMN "dob" DROP NOT NULL;
+ALTER TABLE "appstaff" ALTER COLUMN "dob" DROP NOT NULL;
+ALTER TABLE "superadmin" ALTER COLUMN "dob" DROP NOT NULL;

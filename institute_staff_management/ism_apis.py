@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import List, Optional
 from tortoise.transactions import atomic
 from fastapi.exceptions import HTTPException
+from auth.auth_config import pwd_context
 
 router = APIRouter()
 
@@ -29,8 +30,19 @@ async def add_institute_staff_at_any_level(admin_id: int, username: str, designa
             user_id="user_id",
             active="active"
         )
-        if len(user) != 1:
-            raise HTTPException(406, "No user with this username exists.")
+        password = None
+        if len(user) == 0:
+            dob: datetime.date = staff_data.dob
+            password = dob.isoformat()
+            password = "".join(password.split("-"))
+            user = await UserDB.create(username=username, password=pwd_context.hash(password))
+            user = await UserDB.filter(user_id=user.user_id).values(
+                username="username",
+                created_at="created_at",
+                updated_at="updated_at",
+                user_id = "user_id",
+                active = "active"
+            )
 
         if await Designation.exists(user_id=user[0]["user_id"], active=True):
             raise HTTPException(
@@ -49,11 +61,18 @@ async def add_institute_staff_at_any_level(admin_id: int, username: str, designa
 
         designation_data = await Designation.get(id=designation_instance.id).values()
         staff_new_data = await InstituteStaff.get(id=staff_instance.id).values()
+        if password is None:
+            return {
+                "user": user[0],
+                "super_admin": staff_new_data,
+                "designation": designation_data
+            }
         return {
-            "user": user[0],
-            "staff": staff_new_data,
-            "designation": designation_data
-        }
+                "user": user[0],
+                "super_admin": staff_new_data,
+                "designation": designation_data,
+                "login_credentials": {"username": username, "password": password}
+            }
     return await add_institute_staff()
 
 @router.get("/allStaffsInInstitute")

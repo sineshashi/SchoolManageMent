@@ -17,8 +17,37 @@ from project.config import CORS_CONFIG, DBURL, DOCS_ENABLED
 
 from .custom_openapi import custom_openapi
 
+tags_metadata = [
+    {
+        "name": "Authentication and Permissions",
+        "description": '''Here APIs related to login are being provided.'''
+    },
+    {
+        "name": "App Staff Management",
+        "description": '''Here APIs related to app staff are being provided.'''
+    },
+    {
+        "name": "Onboarding",
+        "description": '''Here APIs related to onboarding new institutes are being provided.'''
+    },
+    {
+        "name": "Institute Staff Management",
+        "description": '''Here APIs related to institute staff are being provided.'''
+    },
+    {
+        "name": "Institute Configuration Management",
+        "description": '''
+            'head_id' and 'vice_head_id' are institutestaffids.
+            THEY ARE NOT USER IDS. DO NOT CONFUSE THEM WITH USERIDS.
+            '''
+    }
+]
+
 if DOCS_ENABLED:
-    app = FastAPI()
+    app = FastAPI(
+        openapi_tags=tags_metadata,
+        title="Student Management System"
+        )
     app.openapi = custom_openapi(
         app,
         response_schema={

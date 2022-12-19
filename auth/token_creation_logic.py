@@ -20,7 +20,7 @@ def convert_datetime_of_vals_to_str(data: Union[dict, BaseModel]):
         except:
             raise HTTPException(500)
     for k, v in data.items():
-        if isinstance(v, datetime.datetime):
+        if isinstance(v, datetime.datetime) or isinstance(v, datetime.date):
             data[k]=v.isoformat()
     return data
 

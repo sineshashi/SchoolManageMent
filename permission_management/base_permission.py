@@ -44,6 +44,10 @@ class InstituteStaffPermissionJsonType(BaseModel):
     vice_head_of_subject_groupids: List[int]=[]
     head_of_subject_ids: List[int]=[]
     vice_head_of_subject_ids: List[int]=[]
+    head_of_class_groupids: List[int]=[]
+    vice_head_of_class_groupids: List[int]=[]
+    head_of_class_ids: List[int]=[]
+    vice_head_of_class_ids: List[int]= []
 
 class InstituteStaffPermissionReturnType(PermissionReturnDataType):
     permissions_json: InstituteStaffPermissionJsonType
@@ -128,7 +132,6 @@ def is_admin(permission_data: union_of_all_permission_types):
     return permission_data.role == "admin"
 
 
-@PermissionManager.validate()
 def is_app_staff_or_super_admin(super_admin_id: int, Authorize: AuthJWT = Depends()):
     permission_data: union_of_all_permission_types = PermissionManager.validate_token_and_return_token_data(
         Authorize=Authorize)
@@ -138,7 +141,6 @@ def is_app_staff_or_super_admin(super_admin_id: int, Authorize: AuthJWT = Depend
         raise HTTPException(406, "Not authorized for the action.")
 
 
-@PermissionManager.validate()
 def is_app_staff_or_admin(admin_id: int, Authorize: AuthJWT = Depends()):
     permission_data: union_of_all_permission_types = PermissionManager.validate_token_and_return_token_data(
         Authorize=Authorize)
