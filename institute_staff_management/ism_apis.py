@@ -105,12 +105,12 @@ async def get_info_about_the_staff(staff_id: int, token_data: union_of_all_permi
     }
 
 @router.put("/editStaffData")
-async def edit_staff_data(staff_id: int, admin_id: int, staff_data_in: institute_staff_data_type, token_data: union_of_all_permission_types=Depends(can_add_insititute_staff)):
+async def edit_staff_data(staff_data_in: institute_staff_data_type, staff_id: int = Body(embed=True),  token_data: union_of_all_permission_types=Depends(can_add_insititute_staff)):
     await InstituteStaff.filter(id=staff_id).update(**staff_data_in.dict(), created_by_id = token_data.user_id)
     return await InstituteStaff.get(id=staff_id).values()
 
 @router.put("/editDesignationAndPermissionForStaff")
-async def edit_designation_data_permission_data_for_staff(designation_id:int, admin_id:int, designation_data: DesignationDataTypeForInstituteStaff, token_data: union_of_all_permission_types = Depends(can_add_insititute_staff)):
+async def edit_designation_data_permission_data_for_staff(designation_data: DesignationDataTypeForInstituteStaff, designation_id:int=Body(embed=True), token_data: union_of_all_permission_types = Depends(can_add_insititute_staff)):
     await Designation.filter(id=designation_id).update(
         designation = designation_data.designation,
         permissions_json = designation_data.permissions_json.dict()
@@ -118,13 +118,13 @@ async def edit_designation_data_permission_data_for_staff(designation_id:int, ad
     return Designation.filter(id=designation_id)
 
 @router.delete("/disableInstituteStaff")
-async def disable_institute_staff_of_given_ids(staff_ids: List[int], admin_id:int, deactivation_reason: Optional[str]=None, token_data: union_of_all_permission_types=Depends(can_delete_institute_staff)):
+async def disable_institute_staff_of_given_ids(staff_ids: List[int]=Body(embed=True), admin_id:int=Body(embed=True), deactivation_reason: Optional[str]=None, token_data: union_of_all_permission_types=Depends(can_delete_institute_staff)):
     await Designation.filter(role=RolesEnum.institutestaff, role_instance_id__in=staff_ids).update(active=False, deactivated_at = datetime.now(), deactivation_reason=deactivation_reason)
     await InstituteStaff.filter(id__in=staff_ids).update(active=False, created_by_id = token_data.user_id)
     return {"success": True}
 
 @router.post("/addEducationDetails")
-async def add_education_detail_for_staff(staff_id: int, admin_id: int, education_data: EducationDetailDataType, token_data: union_of_all_permission_types=Depends(can_add_education_details_for_staff)):
+async def add_education_detail_for_staff(education_data: EducationDetailDataType, staff_id: int=Body(embed=True), token_data: union_of_all_permission_types=Depends(can_add_education_details_for_staff)):
     created_education_details_instance = await EducationDetail.create(
         **education_data.dict(),
         institute_staff_id = staff_id,
@@ -145,7 +145,7 @@ async def edit_education_details(education_detail_id: int, admin_id: int, educat
     return await EducationDetail.get(id=education_detail_id).values()
 
 @router.delete("/disableEducationDetails")
-async def delete_education_details(education_detail_id: int, admin_id: int, token_data: union_of_all_permission_types=Depends(can_disable_education_details_for_staff)):
+async def delete_education_details(education_detail_id: int=Body(embed=True), token_data: union_of_all_permission_types=Depends(can_disable_education_details_for_staff)):
     await EducationDetail.filter(id=education_detail_id).update(
         active=False,
         updated_by_id = token_data.user_id

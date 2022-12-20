@@ -4,13 +4,14 @@ from permission_management.icm_permissions import can_create_class, can_view_cla
 from .icm_datatypes import SubjectGroupDepartMentDataType, SubjectDataType, ClassGroupDataType, ClassDataType
 from fastapi import Depends
 from permission_management.base_permission import union_of_all_permission_types
+from fastapi import Body
 
 icm_router = APIRouter()
 
 @icm_router.post("/createNewSubjectDepartMent")
 async def create_new_subject_department(
-    admin_id: int,
     group_data: SubjectGroupDepartMentDataType,
+    admin_id: int = Body(embed=True),
     token_data: union_of_all_permission_types = Depends(
         can_create_subject_group_department)
 ):
@@ -37,8 +38,8 @@ async def lists_all_active_subject_groups(
 
 @icm_router.delete("/disableSubjectGroupDepartment")
 async def disable_subject_group_department(
-    group_id: int,
-    admin_id: int,
+    group_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(
         can_create_subject_group_department)
 ):
@@ -48,9 +49,9 @@ async def disable_subject_group_department(
 
 @icm_router.post("/editSubjectGroup")
 async def edit_subject_group_data(
-    group_id: int,
-    admin_id: int,
     group_data: SubjectGroupDepartMentDataType,
+    group_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(
         can_create_subject_group_department)
 ):
@@ -64,9 +65,9 @@ async def edit_subject_group_data(
 
 @icm_router.post("/createNewSubject")
 async def add_new_subject_to_given_subject_group(
-    group_id: int,
-    admin_id: int,
     subject_data: SubjectDataType,
+    group_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(can_create_subject)
 ):
     subject_data_dict = subject_data.dict()
@@ -106,10 +107,10 @@ async def get_all_active_subjects_in_group(admin_id: int, group_id: int, token_d
 
 @icm_router.post("/updateSubject")
 async def update_subject_in_given_subject_group(
-    subject_id: int,
-    group_id: int,
-    admin_id: int,
     subject_data: SubjectDataType,
+    subject_id: int=Body(embed=True),
+    group_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(can_create_subject)
 ):
     subject_data_dict = subject_data.dict()
@@ -122,7 +123,7 @@ async def update_subject_in_given_subject_group(
 
 @icm_router.delete("/disableSubject")
 async def disable_subject_in_given_subject_group(
-    subject_id: int,
+    subject_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(can_create_subject)
 ):
     await Subject.filter(subject_id=subject_id).update(active=False, updated_by_id=token_data.user_id)
