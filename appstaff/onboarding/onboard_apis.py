@@ -7,7 +7,7 @@ from appstaff.onboarding.onboard_datatypes import SuperAdminDataTypeIn, AdminDat
 from tortoise.transactions import atomic
 from db_management.designations import DesignationManager
 from db_management.models import Admin, Designation, RolesEnum, SuperAdmin, UserDB
-from permission_management.base_permission import is_app_staff_or_admin_under_super_admin, union_of_all_permission_types, is_app_staff, is_app_staff_or_admin, is_app_staff_or_super_admin, is_fresh_appstaff
+from permission_management.base_permission import is_app_staff_or_super_admin_for_post,is_app_staff_or_admin_under_super_admin, union_of_all_permission_types, is_app_staff, is_app_staff_or_admin, is_app_staff_or_super_admin, is_fresh_appstaff
 from auth.auth_config import pwd_context
 from fastapi import Body
 
@@ -84,7 +84,7 @@ async def create_admin(
     username: str=Body(embed=True),
     super_admin_id: int=Body(embed=True),
     from_time_at_designation:Optional[datetime]=Body(embed=True, default=None),
-    token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin)
+    token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin_for_post)
     ):
     superadmindetails = await SuperAdmin.filter(id=super_admin_id)
     if len(superadmindetails) == 0 or not superadmindetails[0].active or superadmindetails[0].blocked:
@@ -146,8 +146,8 @@ async def create_admin(
             }
     return await on_board_atomically()
 
-@router.get("/editSuperAdminData")
-async def edit_super_admin_data(super_admin_id: int, super_admin_data: SuperAdminDataTypeIn, token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin)):
+@router.put("/editSuperAdminData")
+async def edit_super_admin_data(super_admin_data: SuperAdminDataTypeIn,super_admin_id: int=Body(embed=True), token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin_for_post)):
     if token_data.role == RolesEnum.superadmin and token_data.role_instance_id != super_admin_id:
         raise HTTPException(401, "You are not authorized for the action.")
 
@@ -155,8 +155,8 @@ async def edit_super_admin_data(super_admin_id: int, super_admin_data: SuperAdmi
     await SuperAdmin.filter(id = token_data.role_instance_id).update(**super_admin_data.dict(), updated_by_id = updated_by)
     return await SuperAdmin.filter(id = token_data.role_instance_id).values()[0]
 
-@router.get("/editAdminData")
-async def edit_admin_data(admin_id: int, admin_data: AdminDataTypeIn, token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin)):
+@router.put("/editAdminData")
+async def edit_admin_data(admin_data: AdminDataTypeIn, admin_id: int=Body(embed=True), token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin_for_post)):
     if token_data.role == RolesEnum.admin and token_data.role_instance_id != admin_id:
         raise HTTPException(401, "You are not authorized for the action.")
 
@@ -164,13 +164,13 @@ async def edit_admin_data(admin_id: int, admin_data: AdminDataTypeIn, token_data
     return await Admin.filter(id = token_data.role_instance_id).values()[0]
 
 @router.delete("/disableSuperAdmin")
-async def disable_super_admin(super_admin_id: int, token_data: union_of_all_permission_types = Depends(is_fresh_appstaff)):
+async def disable_super_admin(super_admin_id: int=Body(embed=True), token_data: union_of_all_permission_types = Depends(is_fresh_appstaff)):
     await Designation.filter(role=RolesEnum.superadmin, role_instance_id = super_admin_id).update(active=False)
     await SuperAdmin.filter(id = super_admin_id).update(active=False)
     return {"success": True}
 
 @router.delete("/disableAdmin")
-async def disable_super_admin(admin_id: int, token_data: union_of_all_permission_types = Depends(is_fresh_appstaff)):
+async def disable_super_admin(admin_id: int=Body(embed=True), token_data: union_of_all_permission_types = Depends(is_fresh_appstaff)):
     await Designation.filter(role=RolesEnum.admin, role_instance_id = admin_id).update(active=False)
     await Admin.filter(id = admin_id).update(active=False)
     return {"success": True}

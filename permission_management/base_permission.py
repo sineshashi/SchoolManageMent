@@ -6,6 +6,7 @@ from fastapi import Depends
 from fastapi.exceptions import HTTPException
 from db_management.designations import DesignationManager
 from pydantic import validator
+from fastapi import Body
 
 from db_management.models import RolesEnum
 
@@ -133,6 +134,14 @@ def is_admin(permission_data: union_of_all_permission_types):
 
 
 def is_app_staff_or_super_admin(super_admin_id: int, Authorize: AuthJWT = Depends()):
+    permission_data: union_of_all_permission_types = PermissionManager.validate_token_and_return_token_data(
+        Authorize=Authorize)
+    if permission_data.role == RolesEnum.appstaff or (permission_data.role == RolesEnum.superadmin and super_admin_id == permission_data.role_instance_id):
+        return permission_data
+    else:
+        raise HTTPException(406, "Not authorized for the action.")
+
+def is_app_staff_or_super_admin_for_post(super_admin_id: int=Body(embed=True), Authorize: AuthJWT = Depends()):
     permission_data: union_of_all_permission_types = PermissionManager.validate_token_and_return_token_data(
         Authorize=Authorize)
     if permission_data.role == RolesEnum.appstaff or (permission_data.role == RolesEnum.superadmin and super_admin_id == permission_data.role_instance_id):
