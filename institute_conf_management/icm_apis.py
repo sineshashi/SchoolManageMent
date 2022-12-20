@@ -132,8 +132,8 @@ async def disable_subject_in_given_subject_group(
 
 @icm_router.post("/createNewClassGroup")
 async def create_new_class_group(
-    admin_id: int,
     group_data: ClassGroupDataType,
+    admin_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(can_create_class_group)
 ):
     data = group_data.dict()
@@ -157,9 +157,9 @@ async def list_all_active_class_group_departments(
 
 @icm_router.post("/editClassGroupDepartment")
 async def edit_class_group_department(
-    admin_id: int,
-    group_id: int,
     group_data: ClassGroupDataType,
+    admin_id: int=Body(embed=True),
+    group_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(can_view_class_group)
 ):
     data = group_data.dict()
@@ -176,8 +176,8 @@ async def edit_class_group_department(
 
 @icm_router.delete("/disableClassGroupDepartment")
 async def disable_class_group_department(
-    admin_id: int,
-    group_id: int,
+    admin_id: int=Body(embed=True),
+    group_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(can_create_class_group)
 ):
     await ClassGroupDepartment.filter(admin_id=admin_id, group_id=group_id).update(active=False, updated_by_id=token_data.user_id)
@@ -186,9 +186,9 @@ async def disable_class_group_department(
 
 @icm_router.post("/createNewClass")
 async def create_new_class(
-    class_group_id: int,
-    admin_id: int,
     class_data: ClassDataType,
+    class_group_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
     token_data: union_of_all_permission_types = Depends(can_create_class)
 ):
     data = class_data.dict()
