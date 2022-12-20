@@ -208,7 +208,7 @@ class ParentGaurdian(Model):
 
 class Student(Model):
     id = fields.IntField(pk=True, index=True)
-    #sr no.
+    sr_number=fields.CharField(max_length=55, null=True, index=True)
     user = fields.ForeignKeyField("models.UserDB", "student", fields.CASCADE, index=True, unique=True)
     admin = fields.ForeignKeyField("models.Admin", "student", fields.CASCADE)
     first_name = fields.CharField(max_length=500, index=True, null=False)
@@ -294,6 +294,7 @@ class Class(Model):
     head = fields.ForeignKeyField("models.InstituteStaff", "class_head", fields.SET_NULL, null=True)
     vice_head = fields.ForeignKeyField("models.InstituteStaff", "class_vice_head", fields.SET_NULL, null=True)
     subjects = fields.ManyToManyField("models.Subject", related_name="subjects_of_class", on_delete=fields.SET_NULL, null=True)
+    active = fields.BooleanField(default=True, index=True)
     created_at = UTCDateTimeField(null=True)
     updated_at = UTCDateTimeField(null=True)
     updated_by = fields.ForeignKeyField("models.UserDB", related_name="updated_class", on_delete=fields.SET_NULL, null=True)
