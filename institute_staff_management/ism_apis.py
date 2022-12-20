@@ -51,6 +51,8 @@ async def add_institute_staff_at_any_level(
                 user_id = "user_id",
                 active = "active"
             )
+        else:
+            raise HTTPException(406, "User already exists.")
 
         if await Designation.exists(user_id=user[0]["user_id"], active=True):
             raise HTTPException(

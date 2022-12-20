@@ -46,5 +46,6 @@ async def logout_this_device(Authorization:AuthJWT=Depends()):
 
 @router.post("/createUser")
 async def create_user(user_data: UserCreateDataTypeIn):
+    '''DO NOT CALL THIS API. AS THESE CREDENTIALS ARE USELESS FOR NOW.'''
     await UserDB.create(username = user_data.username, password = pwd_context.hash(user_data.password_1))
     return {"Success": True}

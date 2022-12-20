@@ -47,6 +47,8 @@ async def create_superadmin(
                 user_id = "user_id",
                 active = "active"
             )
+        else:
+            raise HTTPException(406, "User already exists.")
 
         if await Designation.exists(user_id = user[0]["user_id"], active = True):
             raise HTTPException(406, "User already assigned to some other role or designation.")
@@ -104,6 +106,8 @@ async def create_admin(
     user_found = True
     if len(user)==0:
         user_found = False
+    else:
+        raise HTTPException(406, "User already exists.")
     
     @atomic()
     async def on_board_atomically():
