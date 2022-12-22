@@ -152,16 +152,16 @@ async def edit_super_admin_data(super_admin_data: SuperAdminDataTypeIn,super_adm
         raise HTTPException(401, "You are not authorized for the action.")
 
     updated_by = token_data.user_id
-    await SuperAdmin.filter(id = token_data.role_instance_id).update(**super_admin_data.dict())
-    return await SuperAdmin.filter(id = token_data.role_instance_id).values()[0]
+    await SuperAdmin.filter(id = super_admin_id).update(**super_admin_data.dict())
+    return await SuperAdmin.filter(id = super_admin_id).values()[0]
 
 @router.put("/editAdminData")
 async def edit_admin_data(admin_data: AdminDataTypeIn, admin_id: int=Body(embed=True), token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin_for_post)):
     if token_data.role == RolesEnum.admin and token_data.role_instance_id != admin_id:
         raise HTTPException(401, "You are not authorized for the action.")
 
-    await Admin.filter(id = token_data.role_instance_id).update(**admin_data.dict())
-    return await Admin.filter(id = token_data.role_instance_id).values()[0]
+    await Admin.filter(id = admin_id).update(**admin_data.dict())
+    return await Admin.filter(id = admin_id).values()[0]
 
 @router.delete("/disableSuperAdmin")
 async def disable_super_admin(super_admin_id: int=Body(embed=True), token_data: union_of_all_permission_types = Depends(is_fresh_appstaff)):
