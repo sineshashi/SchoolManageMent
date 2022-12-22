@@ -152,7 +152,7 @@ async def edit_super_admin_data(super_admin_data: SuperAdminDataTypeIn,super_adm
         raise HTTPException(401, "You are not authorized for the action.")
 
     updated_by = token_data.user_id
-    await SuperAdmin.filter(id = token_data.role_instance_id).update(**super_admin_data.dict(), updated_by_id = updated_by)
+    await SuperAdmin.filter(id = token_data.role_instance_id).update(**super_admin_data.dict())
     return await SuperAdmin.filter(id = token_data.role_instance_id).values()[0]
 
 @router.put("/editAdminData")
