@@ -1,7 +1,6 @@
-from shutil import unregister_unpack_format
 from typing import Union
 from auth.auth_datatypes import DesignationDataTypeOutForAuth, UserDataType, UserLoginIN
-from permission_management.base_permission import AdminPermissionReturnDataType, AppStaffPermissionReturnDataType, InstituteStaffPermissionReturnType, SuperAdminPermissionReturnDataType
+from permission_management.base_permission import InstituteStaffPermissionJsonType,AdminPermissionReturnDataType, AppStaffPermissionReturnDataType, InstituteStaffPermissionReturnType, SuperAdminPermissionReturnDataType
 from .auth_config import pwd_context
 from db_management.models import Admin, AppStaff, Designation, InstituteStaff, RolesEnum, SuperAdmin, UserDB
 from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
@@ -166,7 +165,9 @@ class TokenCreationManager:
         except Exception:
             raise Exception
 
-        staff_other_data = InstituteStaff.get(id=staff_data.id).values(admin_id = "admin_id", user_id = "user_id", super_admin_id = "admin__super_admin_id")
+        staff_other_data = await InstituteStaff.get(id=staff_data.id).values(admin_id = "admin_id", user_id = "user_id", super_admin_id = "admin__super_admin_id")
+        designation_data.permissions_json=InstituteStaffPermissionJsonType(**designation_data.permissions_json)
+        
         if user_data.user_id != staff_other_data["user_id"]:
             raise HTTPException(
                 406, "Wrong data saved in db. Contact the staff as soon as possible.")
@@ -177,7 +178,7 @@ class TokenCreationManager:
                 "user_personal_data": convert_datetime_of_vals_to_str(staff_data.__dict__)
             }
         user_claims = InstituteStaffPermissionReturnType(
-            user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id, role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, admin_id=staff_other_data["admin_id"], super_admin_id=staff_other_data["super_admin_id"], permissions_json=designation_data.permission_json, super_admin_level=staff_data.super_admin_level, other_data=other_data)
+            user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id, role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, admin_id=staff_other_data["admin_id"], super_admin_id=staff_other_data["super_admin_id"], permissions_json=designation_data.permissions_json, super_admin_level=staff_data.super_admin_level, other_data=other_data)
 
         return {
             "user_claims": user_claims
@@ -211,7 +212,7 @@ class TokenCreationManager:
         elif designation_data.role == RolesEnum.admin:
             user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_admin(userdata, designation_data)
         elif designation_data.role == RolesEnum.institutestaff:
-            user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_institute_staff()
+            user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_institute_staff(userdata, designation_data)
         else:
             raise HTTPException(401, "Some invalid user type found.")
 

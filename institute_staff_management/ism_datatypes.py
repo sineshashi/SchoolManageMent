@@ -7,14 +7,14 @@ from pydantic import BaseModel
 from pydantic import validator
 from fastapi import HTTPException
 
-from permission_management.base_permission import InstituteStaffPermissionReturnType
+from permission_management.base_permission import InstituteStaffPermissionJsonType
 
 institute_staff_data_type = pydantic_model_creator(InstituteStaff, exclude_readonly=True)
 institute_staff_data_type_out = pydantic_model_creator(InstituteStaff)
 
 class DesignationDataTypeForInstituteStaff(BaseModel):
     designation: DesignationManager.role_designation_map[RolesEnum.institutestaff]
-    permissions_json: InstituteStaffPermissionReturnType
+    permissions_json: InstituteStaffPermissionJsonType
 
 class EducationDetailDataType(BaseModel):
     level: EducationLevelEnum

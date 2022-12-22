@@ -10,6 +10,9 @@ def validate_email(value):
         raise HTTPException(405, "Email is not Valid")
 
 def validate_phone_number(value):
-    phone_number = phonenumbers.parse(value)
+    try:
+        phone_number = phonenumbers.parse(value)
+    except:
+        raise HTTPException(405, "Phone Number is not valid")
     if not phonenumbers.is_valid_number(phone_number):
         raise HTTPException(405, "Phone Number is not valid")

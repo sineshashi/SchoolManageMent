@@ -65,7 +65,7 @@ async def get_all_data_for_user(token_data: union_of_all_permission_types=Depend
     designation_data = await Designation.filter(role_instance_id=app_staff_data[0]["id"], active=True).values(
         username = "user__username",
         designation = "designation",
-        permission_json = "permissions_json",
+        permissions_json = "permissions_json",
         from_time = "from_time"
     )
     if len(designation_data) != 1:

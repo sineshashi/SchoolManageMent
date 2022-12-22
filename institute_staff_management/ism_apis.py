@@ -18,7 +18,7 @@ router = APIRouter()
 @router.post("/addInstituteStaff")
 async def add_institute_staff_at_any_level(
     staff_data: institute_staff_data_type,
-    permission_json: InstituteStaffPermissionJsonType,
+    permissions_json: Optional[InstituteStaffPermissionJsonType]=InstituteStaffPermissionJsonType(),
     admin_id: int=Body(embed=True),
     username: str=Body(embed=True),
     designation: DesignationManager.role_designation_map[RolesEnum.institutestaff]=Body(embed=True),
@@ -57,14 +57,17 @@ async def add_institute_staff_at_any_level(
                 406, "User already assigned to some other role or designation.")
 
         staff_data_dict = staff_data.dict()
-        staff_instance = await InstituteStaff.create(**staff_data_dict, created_by_id=created_by_id, user_id=user[0]["user_id"], admin_id = admin_id)
+        try:
+            staff_instance = await InstituteStaff.create(**staff_data_dict, created_by_id=created_by_id, user_id=user[0]["user_id"], admin_id = admin_id)
+        except Exception as e:
+            raise e
         designation_instance = await Designation.create(
             role=RolesEnum.institutestaff,
             designation=designation,
             role_instance_id=staff_instance.id,
             user_id=user[0]["user_id"],
             from_time=from_time,
-            permissions_json=permission_json.dict()
+            permissions_json=permissions_json.dict()
         )
 
         designation_data = await Designation.get(id=designation_instance.id).values()
@@ -72,12 +75,12 @@ async def add_institute_staff_at_any_level(
         if password is None:
             return {
                 "user": user[0],
-                "super_admin": staff_new_data,
+                "institute_staff": staff_new_data,
                 "designation": designation_data
             }
         return {
                 "user": user[0],
-                "super_admin": staff_new_data,
+                "institute_staff": staff_new_data,
                 "designation": designation_data,
                 "login_credentials": {"username": username, "password": password}
             }

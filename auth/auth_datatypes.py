@@ -39,4 +39,4 @@ class DesignationDataTypeOutForAuth(BaseModel):
     designation: str
     role: str
     role_instance_id: int
-    permission_json: Dict = {} #This is the default. Handle in later when project grows.
+    permissions_json: Dict = {} #This is the default. Handle in later when project grows.

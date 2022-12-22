@@ -1,10 +1,13 @@
-from db_management.models import SubjectGroupDepartment, Subject, SectionSubject, Class, ClassGroupDepartment, ClassSectionSemester, AcademicSessionAndSemester
+from db_management.models import RolesEnum, Designation, SubjectGroupDepartment, Subject, SectionSubject, Class, ClassGroupDepartment, ClassSectionSemester, AcademicSessionAndSemester
 from fastapi import APIRouter
 from permission_management.icm_permissions import can_create_academic_session, can_view_academic_session, can_create_class, can_view_class, can_view_subject, can_create_class_group, can_view_class_group, can_view_subject, can_create_subject, can_create_subject_group_department, can_view_subject_group_department
-from .icm_datatypes import AcademicSessionAndSemesterDataTypeInDB, AcademicSessionSemesterDataType, SubjectGroupDepartMentDataType, SubjectDataType, ClassGroupDataType, ClassDataType
+from .icm_datatypes import ClassUpdateDataType, AcademicSessionAndSemesterDataTypeInDB, AcademicSessionSemesterDataType, SubjectGroupDepartMentDataType, SubjectDataType, ClassGroupDataType, ClassDataType
 from fastapi import Depends
 from permission_management.base_permission import union_of_all_permission_types
 from fastapi import Body
+from tortoise.transactions import atomic
+from permission_management.base_permission import InstituteStaffPermissionJsonType
+from typing import List
 
 icm_router = APIRouter()
 
@@ -19,13 +22,30 @@ async def create_new_subject_department(
     updated_by_id = token_data.user_id
     data = group_data.dict()
     data["updated_by_id"] = updated_by_id
-    data[admin_id] = admin_id
-    created_obj = await SubjectGroupDepartment.create(**data)
-    return {
-        "group_id": created_obj.group_id,
-        "group_name": created_obj.group_name,
-        "active": created_obj.active
-    }
+    data["admin_id"] = admin_id
+
+    @atomic()
+    async def do():
+        created_obj = await SubjectGroupDepartment.create(**data)
+        if group_data.head_id is not None:
+            head_designation = await Designation.get(role_instance_id=group_data.head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.head_of_subject_groupids.append(created_obj.group_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if group_data.vice_head_id is not None:
+            head_designation = await Designation.get(role_instance_id=group_data.vice_head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_head_of_subject_groupids.append(created_obj.group_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+
+        return {
+            "group_id": created_obj.group_id,
+            "group_name": created_obj.group_name,
+            "active": created_obj.active
+        }
+    return await do()
 
 
 @icm_router.get("/listAllSubjectGroups")
@@ -34,7 +54,7 @@ async def lists_all_active_subject_groups(
     token_data: union_of_all_permission_types = Depends(
         can_view_subject_group_department)
 ):
-    return SubjectGroupDepartment.filter(admin_id=admin_id, active=True)
+    return await SubjectGroupDepartment.filter(admin_id=admin_id, active=True).values()
 
 
 @icm_router.delete("/disableSubjectGroupDepartment")
@@ -59,10 +79,48 @@ async def edit_subject_group_data(
     updated_by_id = token_data.user_id
     data = group_data.dict()
     data["updated_by_id"] = updated_by_id
-    data[admin_id] = admin_id
-    await SubjectGroupDepartment.filter(group_id=group_id, admin_id=admin_id).update(**data)
-    return await SubjectGroupDepartment.filter(group_id=group_id, admin_id=admin_id).values()[0]
+    data["admin_id"] = admin_id
 
+    @atomic()
+    async def do():
+        subject_group=await SubjectGroupDepartment.get(
+            group_id=group_id, admin_id=admin_id,active=True
+            ).values(
+                head_id="head_id",
+                vice_head_id="vice_head_id"
+            )
+        cnt_head = subject_group["head_id"]
+        if cnt_head is not None:
+            cnt_designation = await Designation.get(role_instance_id=cnt_head,role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**cnt_designation.permissions_json)
+            if group_id in permissions_json.head_of_subject_groupids:
+                permissions_json.head_of_subject_groupids.remove(group_id)
+            cnt_designation.permissions_json=permissions_json.dict()
+            await cnt_designation.save()
+        cnt_vice_head = subject_group["vice_head_id"]
+        if cnt_vice_head is not None:
+            cnt_designation = await Designation.get(role_instance_id=cnt_vice_head,role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**cnt_designation.permissions_json)
+            if group_id in permissions_json.vice_head_of_subject_groupids:
+                permissions_json.vice_head_of_subject_groupids.remove(group_id)
+            cnt_designation.permissions_json=permissions_json.dict()
+            await cnt_designation.save()
+
+        await SubjectGroupDepartment.filter(group_id=group_id, admin_id=admin_id,active=True).update(**data)
+        if group_data.head_id is not None:
+            head_designation = await Designation.get(role_instance_id=group_data.head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.head_of_subject_groupids.append(group_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if group_data.vice_head_id is not None:
+            head_designation = await Designation.get(role_instance_id=group_data.vice_head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_head_of_subject_groupids.append(group_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        return await SubjectGroupDepartment.filter(group_id=group_id, admin_id=admin_id,active=True).values()
+    return await do()
 
 @icm_router.post("/createNewSubject")
 async def add_new_subject_to_given_subject_group(
@@ -75,34 +133,39 @@ async def add_new_subject_to_given_subject_group(
     subject_data_dict["subject_group_id"] = group_id
     subject_data_dict["admin_id"] = admin_id
     subject_data_dict["updated_by_id"] = token_data.user_id
-    createdobj = await Subject.create(**subject_data_dict)
-    return {
+
+    @atomic()
+    async def do():
+        createdobj = await Subject.create(**subject_data_dict)
+        if subject_data.head_id is not None:
+            head_designation = await Designation.get(role_instance_id=subject_data.head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.head_of_subject_ids.append(createdobj.subject_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if subject_data.vice_head_id is not None:
+            head_designation = await Designation.get(role_instance_id=subject_data.vice_head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_head_of_subject_ids.append(createdobj.subject_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+
+        return {
         "subject_name": createdobj.subject_name,
         "subject_id": createdobj.subject_id,
         "active": createdobj.active
     }
+    return await do()
 
 
 @icm_router.get("/listAllActiveSubjectsForInsitiute")
 async def get_all_active_subjects_for_institute(admin_id: int, token_data: union_of_all_permission_types = Depends(can_view_subject)):
-    return await Subject.filter(admin_id=admin_id, active=True, subject_group__active=True).values(
-        subject_id="subject_id",
-        group_id="subject_group_id",
-        admin_id="admin_id",
-        head_id="head_id",
-        vice_head_id="vice_head_id"
-    )
+    return await Subject.filter(admin_id=admin_id, active=True, subject_group__active=True).values()
 
 
 @icm_router.get("/listAllSubjectsInSubjectGroup")
 async def get_all_active_subjects_in_group(admin_id: int, group_id: int, token_data: union_of_all_permission_types = Depends(can_view_subject)):
-    subjects = await Subject.filter(subject_group_id=group_id, admin_id=admin_id, active=True, subject_group__active=True).values(
-        subject_id="subject_id",
-        group_id="subject_group_id",
-        admin_id="admin_id",
-        head_id="head_id",
-        vice_head_id="vice_head_id"
-    )
+    subjects = await Subject.filter(subject_group_id=group_id, admin_id=admin_id, active=True, subject_group__active=True).values()
     return subjects
 
 
@@ -118,8 +181,47 @@ async def update_subject_in_given_subject_group(
     subject_data_dict["subject_group_id"] = group_id
     subject_data_dict["admin_id"] = admin_id
     subject_data_dict["updated_by_id"] = token_data.user_id
-    await Subject.filter(subject_id=subject_id).update(**subject_data_dict)
-    return await Subject.filter(subject_id=subject_id).values()
+
+    @atomic()
+    async def do():
+        subject=await Subject.get(
+            subject_id=subject_id,admin_id=admin_id,active=True
+            ).values(
+                head_id="head_id",
+                vice_head_id="vice_head_id"
+            )
+        cnt_head = subject["head_id"]
+        if cnt_head is not None:
+            cnt_designation = await Designation.get(role_instance_id=cnt_head,role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**cnt_designation.permissions_json)
+            if subject_id in permissions_json.head_of_subject_ids:
+                permissions_json.head_of_subject_ids.remove(subject_id)
+            cnt_designation.permissions_json=permissions_json.dict()
+            await cnt_designation.save()
+        cnt_vice_head = subject["vice_head_id"]
+        if cnt_vice_head is not None:
+            cnt_designation = await Designation.get(role_instance_id=cnt_vice_head,role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**cnt_designation.permissions_json)
+            if subject_id in permissions_json.vice_head_of_subject_ids:
+                permissions_json.vice_head_of_subject_ids.remove(subject_id)
+            cnt_designation.permissions_json=permissions_json.dict()
+            await cnt_designation.save()
+
+        await Subject.filter(subject_id=subject_id, admin_id=admin_id,active=True).update(**subject_data_dict)
+        if subject_data.head_id is not None:
+            head_designation = await Designation.get(role_instance_id=subject_data.head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.head_of_subject_ids.append(subject_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if subject_data.vice_head_id is not None:
+            head_designation = await Designation.get(role_instance_id=subject_data.vice_head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_head_of_subject_ids.append(subject_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        return await Subject.filter(subject_id=subject_id, admin_id=admin_id,active=True).values()
+    return await do()
 
 
 @icm_router.delete("/disableSubject")
@@ -140,12 +242,30 @@ async def create_new_class_group(
     data = group_data.dict()
     data["admin_id"] = admin_id
     data["updated_by_id"] = token_data.user_id
-    createdobj = await ClassGroupDepartment.create(**data)
-    return {
-        "group_id": createdobj.group_id,
-        "group_name": createdobj.group_name,
-        "active": createdobj.active
-    }
+
+
+    @atomic()
+    async def do():
+        created_obj = await ClassGroupDepartment.create(**data)
+        if group_data.head_id is not None:
+            head_designation = await Designation.get(role_instance_id=group_data.head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.head_of_class_groupids.append(created_obj.group_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if group_data.vice_head_id is not None:
+            head_designation = await Designation.get(role_instance_id=group_data.vice_head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_head_of_class_groupids.append(created_obj.group_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+
+        return {
+            "group_id": created_obj.group_id,
+            "group_name": created_obj.group_name,
+            "active": created_obj.active
+        }
+    return await do()
 
 
 @icm_router.get("/listAllClassGroupDepartments")
@@ -165,15 +285,53 @@ async def edit_class_group_department(
 ):
     data = group_data.dict()
     data["updated_by_id"] = token_data.user_id
-    await ClassGroupDepartment.filter(admin_id=admin_id, group_id=group_id, active=True).update(**data)
-    return await ClassGroupDepartment.get(admin_id=admin_id, group_id=group_id, active=True).values(
-        admin="admin_id",
-        group_id="group_id",
-        group_name="group_name",
-        head_id="head_id",
-        vice_head_id="vice_id"
-    )
 
+    @atomic()
+    async def do():
+        subject_group=await ClassGroupDepartment.get(
+            group_id=group_id, admin_id=admin_id,active=True
+            ).values(
+                head_id="head_id",
+                vice_head_id="vice_head_id"
+            )
+        cnt_head = subject_group["head_id"]
+        if cnt_head is not None:
+            cnt_designation = await Designation.get(role_instance_id=cnt_head,role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**cnt_designation.permissions_json)
+            if group_id in permissions_json.head_of_class_groupids:
+                permissions_json.head_of_class_groupids.remove(group_id)
+            cnt_designation.permissions_json=permissions_json.dict()
+            await cnt_designation.save()
+        cnt_vice_head = subject_group["vice_head_id"]
+        if cnt_vice_head is not None:
+            cnt_designation = await Designation.get(role_instance_id=cnt_vice_head,role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**cnt_designation.permissions_json)
+            if group_id in permissions_json.vice_head_of_class_groupids:
+                permissions_json.vice_head_of_class_groupids.remove(group_id)
+            cnt_designation.permissions_json=permissions_json.dict()
+            await cnt_designation.save()
+
+        await ClassGroupDepartment.filter(group_id=group_id, admin_id=admin_id,active=True).update(**data)
+        if group_data.head_id is not None:
+            head_designation = await Designation.get(role_instance_id=group_data.head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.head_of_class_groupids.append(group_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if group_data.vice_head_id is not None:
+            head_designation = await Designation.get(role_instance_id=group_data.vice_head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_head_of_class_groupids.append(group_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        return await ClassGroupDepartment.filter(group_id=group_id, admin_id=admin_id,active=True).values(
+            admin="admin_id",
+            group_id="group_id",
+            group_name="group_name",
+            head_id="head_id",
+            vice_head_id="vice_id"
+        )
+    return await do()
 
 @icm_router.delete("/disableClassGroupDepartment")
 async def disable_class_group_department(
@@ -198,14 +356,31 @@ async def create_new_class(
     data["class_group_id"] = class_group_id
     data["admin_id"] = admin_id
     data["updated_by_id"] = token_data.user_id
-    createdobj = await Class.create(**data)
-    await createdobj.subjects.add(await Subject.filter(subject_id__in=subject_ids, active=True))
-    return {
-        "class_id": createdobj.class_id,
-        "class_name": createdobj.class_name,
-        "subjects": await createdobj.subjects.all().values()
-    }
+    @atomic()
+    async def do():
+        createdobj = await Class.create(**data)
+        subjects = await Subject.filter(subject_id__in=subject_ids, active=True)
+        for subject in subjects:
+            await createdobj.subjects.add(subject)
+        if class_data.head_id is not None:
+            head_designation = await Designation.get(role_instance_id=class_data.head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.head_of_class_ids.append(createdobj.class_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if class_data.vice_head_id is not None:
+            head_designation = await Designation.get(role_instance_id=class_data.vice_head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_head_of_class_ids.append(createdobj.class_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
 
+        return {
+        "class_name": createdobj.class_name,
+        "class_id": createdobj.class_id,
+        "active": createdobj.active
+    }
+    return await do()
 
 @icm_router.get("/listAllClassesInInstitute")
 async def list_all_classes_of_institute(
@@ -224,8 +399,7 @@ async def list_all_classes_of_institute(
     for cls in classes:
         class_id = cls["class_id"]
         sub = await Class.filter(class_id=class_id)
-        cls["subjects"] = await sub[0].subjects.all().values()
-        cls["subjects"] = filter(lambda x: x["active"], cls["subjects"])
+        cls["subjects"] = await sub[0].subjects.filter(active=True).values()
         classes_with_subjects.append(cls)
     return classes_with_subjects
 
@@ -248,8 +422,7 @@ async def list_all_classes_of_class_group(
     for cls in classes:
         class_id = cls["class_id"]
         sub = await Class.filter(class_id=class_id)
-        cls["subjects"] = await sub[0].subjects.all().values()
-        cls["subjects"] = filter(lambda x: x["active"], cls["subjects"])
+        cls["subjects"] = await sub[0].subjects.all(active=True).values()
         classes_with_subjects.append(cls)
     return classes_with_subjects
 
@@ -272,11 +445,89 @@ async def get_class_data(
     for cls in classes:
         class_id = cls["class_id"]
         sub = await Class.filter(class_id=class_id)
-        cls["subjects"] = await sub[0].subjects.all().values()
-        cls["subjects"] = filter(lambda x: x["active"], cls["subjects"])
+        cls["subjects"] = await sub[0].subjects.filter(active=True).values()
         classes_with_subjects.append(cls)
     return classes_with_subjects[0]
 
+@icm_router.post("/updateClassData")
+async def update_subject_in_given_class_data(
+    subject_data: ClassUpdateDataType,
+    class_id: int = Body(embed=True),
+    group_id: int = Body(embed=True),
+    admin_id: int = Body(embed=True),
+    token_data: union_of_all_permission_types = Depends(can_create_class)
+):
+    data = subject_data.dict()
+    data["group_id"] = group_id
+    data["admin_id"] = admin_id
+    data["updated_by_id"] = token_data.user_id
+
+    @atomic()
+    async def do():
+        subject=await Class.get(
+            class_id=class_id,admin_id=admin_id,active=True
+            ).values(
+                head_id="head_id",
+                vice_head_id="vice_head_id"
+            )
+        cnt_head = subject["head_id"]
+        if cnt_head is not None:
+            cnt_designation = await Designation.get(role_instance_id=cnt_head,role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**cnt_designation.permissions_json)
+            if class_id in permissions_json.head_of_class_ids:
+                permissions_json.head_of_class_ids.remove(class_id)
+            cnt_designation.permissions_json=permissions_json.dict()
+            await cnt_designation.save()
+        cnt_vice_head = subject["vice_head_id"]
+        if cnt_vice_head is not None:
+            cnt_designation = await Designation.get(role_instance_id=cnt_vice_head,role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**cnt_designation.permissions_json)
+            if class_id in permissions_json.vice_head_of_class_ids:
+                permissions_json.vice_head_of_class_ids.remove(class_id)
+            cnt_designation.permissions_json=permissions_json.dict()
+            await cnt_designation.save()
+
+        await Class.filter(subject_id=class_id, admin_id=admin_id,active=True).update(**data)
+        if subject_data.head_id is not None:
+            head_designation = await Designation.get(role_instance_id=subject_data.head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.head_of_subject_ids.append(class_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if subject_data.vice_head_id is not None:
+            head_designation = await Designation.get(role_instance_id=subject_data.vice_head_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_head_of_subject_ids.append(class_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        return await Class.filter(class_id=class_id, admin_id=admin_id,active=True).values()
+    return await do()
+
+@icm_router.post("addNewSubjectsInClass")
+async def add_subjects_in_a_particular_class(
+    subject_ids: List[int]=Body(embed=True,default=[]),
+    class_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
+    token_data: union_of_all_permission_types=Depends(can_create_class)
+):
+    classobj = await Class.get(class_id=class_id, admin_id=admin_id,active=True)
+    subjects = await Subject.filter(subject_id__in=subject_ids, active=True)
+    for subject in subjects:
+        await classobj.subjects.add(subject)
+    return {"subjects": await classobj.subjects.all().values()}
+
+@icm_router.post("/removeSubjectsFromClass")
+async def remove_subjects_from_class(
+    subject_ids: List[int]=Body(embed=True, default=[]),
+    class_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
+    token_data: union_of_all_permission_types=Depends(can_create_class)
+):
+    classobj = await Class.get(class_id=class_id, admin_id=admin_id,active=True)
+    subjects = await Subject.filter(subject_id__in=subject_ids, active=True)
+    for subject in subjects:
+        await classobj.subjects.remove(subjects)
+    return {"subjects": await classobj.subjects.all().values()}
 
 @icm_router.delete("/disableClass")
 async def disable_class_for_given_id(

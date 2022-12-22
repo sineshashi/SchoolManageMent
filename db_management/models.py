@@ -14,6 +14,17 @@ class RolesEnum(str, enum.Enum):
     superadmin = "superadmin"
     admin = "admin"
     institutestaff = "institutestaff"
+
+class GenderEnum(str, enum.Enum):
+    male="M"
+    female="F",
+    other="O"
+
+class PreNameEnum(str, enum.Enum):
+    mr = "Mr."
+    mrs = "Mrs."
+    ms = "Ms."
+    late = "Late"
             
 class Trigger(Model):
     trigger_id = fields.IntField(pk = True),
@@ -173,6 +184,9 @@ class EducationDetail(Model):
 
 class ParentGaurdian(Model):
     id = fields.IntField(pk=True, index=True)
+    user=fields.OneToOneField("models.UserDB","gaurdian",on_delete=fields.SET_NULL,null=True, index=True)
+    is_gaurdian=fields.BooleanField(default=False)
+    prename=fields.CharEnumField(PreNameEnum, max_length=20,null=True)
     first_name = fields.CharField(max_length=500, index=True, null=False)
     middle_name = fields.CharField(max_length=500, null=False, default="")
     last_name = fields.CharField(max_length=500, null=False, default="")
@@ -215,6 +229,7 @@ class Student(Model):
     middle_name = fields.CharField(max_length=500, null=False, default="")
     last_name = fields.CharField(max_length=500, null=False, default="")
     date_of_birth = fields.DateField(null=False)
+    gender = fields.CharEnumField(GenderEnum, "Gender of Student",max_length=20,null=True, index=True)
     email = fields.TextField(validators=[validate_email])
     phone_number = fields.TextField(validators=[validate_phone_number])
     identity_type = fields.CharField(max_length=255, null=True)

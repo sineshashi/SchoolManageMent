@@ -9,7 +9,7 @@ from .base_permission import union_of_all_permission_types, PermissionManager
 
 def can_create_subject_group_department(admin_id: int=Body(embed=True), Authorize: AuthJWT = Depends()):
     permission_data: union_of_all_permission_types = PermissionManager.validate_token_and_return_token_data(
-        Authorize=Authorize, token="fresh")
+        Authorize=Authorize)
     if (permission_data.role == RolesEnum.appstaff) or (permission_data.role == RolesEnum.superadmin and admin_id in permission_data.admin_ids) or (permission_data.role == RolesEnum.admin and permission_data.role_instance_id == admin_id) or (permission_data.role == RolesEnum.institutestaff and permission_data.admin_id == admin_id and permission_data.permissions_json.is_db_manager):
         return permission_data
     raise HTTPException(406, "You are not authorized for this action.")
@@ -41,7 +41,7 @@ def can_view_subject(admin_id: int, Authorize: AuthJWT = Depends()):
 
 def can_create_class_group(admin_id: int=Body(embed=True), Authorize: AuthJWT = Depends()):
     permission_data: union_of_all_permission_types = PermissionManager.validate_token_and_return_token_data(
-        Authorize=Authorize, token="fresh")
+        Authorize=Authorize)
     if (permission_data.role == RolesEnum.appstaff) or (permission_data.role == RolesEnum.superadmin and admin_id in permission_data.admin_ids) or (permission_data.role == RolesEnum.admin and permission_data.role_instance_id == admin_id) or (permission_data.role == RolesEnum.institutestaff and permission_data.admin_id == admin_id and permission_data.permissions_json.is_db_manager):
         return permission_data
     raise HTTPException(406, "You are not authorized for this action.")

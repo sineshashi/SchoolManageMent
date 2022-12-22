@@ -7,27 +7,33 @@ from db_management.models import AcademicSessionAndSemester
 
 class SubjectGroupDepartMentDataType(BaseModel):
     group_name: str
-    head_id: int
-    vice_head_id: int
+    head_id: Optional[int]=None
+    vice_head_id: Optional[int]=None
 
 
 class SubjectDataType(BaseModel):
     subject_name: str
-    head_id: int
-    vice_head_id: int
+    head_id: Optional[int]=None
+    vice_head_id: Optional[int]=None
 
 
 class ClassGroupDataType(BaseModel):
     group_name: str
-    head_id: int
-    vice_head_id: int
+    head_id: Optional[int]=None
+    vice_head_id: Optional[int]=None
 
 
 class ClassDataType(BaseModel):
     class_name: str
-    head_id: int
-    vice_head_id: int
+    head_id: Optional[int]=None
+    vice_head_id: Optional[int]=None
     subject_ids: List[int] = []
+
+
+class ClassUpdateDataType(BaseModel):
+    class_name: str
+    head_id: Optional[int]=None
+    vice_head: Optional[int]=None
 
 
 class AcademicSessionSemesterDataType(BaseModel):
