@@ -10,7 +10,7 @@ def to_utc_datetime(value: datetime.datetime)->datetime.datetime:
         return value
     else:
         value = value.astimezone(utc)
-        value.replace(tzinfo=None)
+        value = value.replace(tzinfo=None)
         return value #This will save datetime in given indian time zone by default.
 
 class UTCDateTimeField(fields.DatetimeField):    

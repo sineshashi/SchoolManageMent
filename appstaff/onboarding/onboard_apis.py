@@ -22,9 +22,7 @@ async def create_superadmin(
     token_data: union_of_all_permission_types=Depends(is_app_staff)
     ):
     created_by_id = token_data.user_id
-    from_time=None
-    if from_time_at_designation is not None:
-        from_time = from_time_at_designation.astimezone("utc")
+    from_time=from_time_at_designation
     @atomic()
     async def on_board_atomically():
         user = await UserDB.filter(username=username).values(
@@ -92,9 +90,7 @@ async def create_admin(
     if len(superadmindetails) == 0 or not superadmindetails[0].active or superadmindetails[0].blocked:
         raise HTTPException(406, "This super admin does not exists")
     created_by_id = token_data.user_id
-    from_time=None
-    if from_time_at_designation is not None:
-        from_time = from_time_at_designation.astimezone("utc")
+    from_time=from_time_at_designation
 
     user = await UserDB.filter(username=username).values(
             username="username",

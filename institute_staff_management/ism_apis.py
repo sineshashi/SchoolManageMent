@@ -25,9 +25,7 @@ async def add_institute_staff_at_any_level(
     from_time_at_designation: Optional[datetime] = Body(embed=True, default=None),
     token_data: union_of_all_permission_types = Depends(can_add_insititute_staff)):
     created_by_id = token_data.user_id
-    from_time = None
-    if from_time_at_designation is not None:
-        from_time = from_time_at_designation.astimezone("utc")
+    from_time = from_time_at_designation
 
     @atomic()
     async def add_institute_staff():
