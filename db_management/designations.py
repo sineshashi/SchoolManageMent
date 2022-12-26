@@ -30,6 +30,7 @@ class InstituteStaffDesignations(str, Enum):
 class StudentDesignations(str, Enum):
     monitor = "Monitor"
     student = "Student"
+    vice_monitor = "Vice Monitor"
 
 class DesignationManager:
     role_designation_map = {

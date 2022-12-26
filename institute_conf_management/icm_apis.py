@@ -1,13 +1,14 @@
 from db_management.models import RolesEnum, Designation, SubjectGroupDepartment, Subject, SectionSubject, Class, ClassGroupDepartment, ClassSectionSemester, AcademicSessionAndSemester
 from fastapi import APIRouter
-from permission_management.icm_permissions import can_create_academic_session, can_view_academic_session, can_create_class, can_view_class, can_view_subject, can_create_class_group, can_view_class_group, can_view_subject, can_create_subject, can_create_subject_group_department, can_view_subject_group_department
-from .icm_datatypes import ClassUpdateDataType, AcademicSessionAndSemesterDataTypeInDB, AcademicSessionSemesterDataType, SubjectGroupDepartMentDataType, SubjectDataType, ClassGroupDataType, ClassDataType
+from permission_management.icm_permissions import can_create_section,can_view_section,can_create_academic_session, can_view_academic_session, can_create_class, can_view_class, can_view_subject, can_create_class_group, can_view_class_group, can_view_subject, can_create_subject, can_create_subject_group_department, can_view_subject_group_department
+from .icm_datatypes import SectionGetDataType, SubjectAdditionDataType, SubjectAdditionOutDataType,ClassSectionSemeseterDataType, ClassSectionSemesterOutDataType,ClassUpdateDataType, AcademicSessionAndSemesterDataTypeInDB, AcademicSessionSemesterDataType, SubjectGroupDepartMentDataType, SubjectDataType, ClassGroupDataType, ClassDataType
 from fastapi import Depends
 from permission_management.base_permission import union_of_all_permission_types
 from fastapi import Body
 from tortoise.transactions import atomic
-from permission_management.base_permission import InstituteStaffPermissionJsonType
+from permission_management.base_permission import InstituteStaffPermissionJsonType, StudentPermissionJsonType
 from typing import List
+from fastapi.exceptions import HTTPException
 
 icm_router = APIRouter()
 
@@ -550,7 +551,7 @@ async def add_new_academic_session_and_semester(
     data["admin_id"] = admin_id
     data["updated_by_id"] = token_data.user_id
     createdobj = await AcademicSessionAndSemester.create(**data)
-    return await AcademicSessionAndSemesterDataTypeInDB.from_queryset_single(await AcademicSessionAndSemester.get(semester_id=createdobj.semester_id))
+    return await AcademicSessionAndSemester.get(semester_id=createdobj.semester_id)
 
 
 @icm_router.get("/listAllAcademicSessionsOfInstitute")
@@ -581,3 +582,166 @@ async def disable_academic_session(
 ):
     await AcademicSessionAndSemester.filter(semester_id=semester_id, admin_id=admin_id).update(active=False, updated_by_id=token_data.user_id)
     return {"success": True}
+
+@icm_router.post("/addNewClassSection", response_model=ClassSectionSemesterOutDataType)
+async def add_new_class_section(
+    section_data: ClassSectionSemeseterDataType,
+    school_class_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
+    token_data: union_of_all_permission_types=Depends(can_create_section)
+):
+    data = section_data.dict()
+    data["admin_id"]=admin_id
+    data["school_class_id"]=school_class_id
+    data["updated_by_id"]=token_data.user_id
+    @atomic()
+    async def do():
+        createdobj = await ClassSectionSemester.create(**data)
+        if section_data.class_teacher_id is not None:
+            head_designation = await Designation.get(role_instance_id=section_data.class_teacher_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.class_teacher_of_section_ids.append(createdobj.section_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if section_data.vice_class_teacher_id is not None:
+            head_designation = await Designation.get(role_instance_id=section_data.vice_class_teacher_id, role=RolesEnum.institutestaff)
+            permissions_json = InstituteStaffPermissionJsonType(**head_designation.permissions_json)
+            permissions_json.vice_class_teacher_of_section_ids.append(section_data.vice_class_teacher_id)
+            head_designation.permissions_json=permissions_json.dict()
+            await head_designation.save()
+        if section_data.class_monitor_id is not None:
+            designation = await Designation.get(role_instance_id=section_data.class_monitor_id, role=RolesEnum.student, active=True)
+            permissions_json = StudentPermissionJsonType(**designation.permissions_json)
+            permissions_json.is_class_monitor=True
+            designation.permissions_json = permissions_json.dict()
+            await designation.save()
+        if section_data.vice_class_monitor_id is not None:
+            designation = await Designation.get(role_instance_id=section_data.vice_class_monitor_id, role=RolesEnum.student, active=True)
+            permissions_json = StudentPermissionJsonType(**designation.permissions_json)
+            permissions_json.is_vice_class_monitor=True
+            designation.permissions_json = permissions_json.dict()
+            await designation.save()
+        createdobjdata = await ClassSectionSemester.filter(section_id=createdobj.section_id).values()
+        return createdobjdata[0]
+    return do()
+
+@icm_router.get("/listAllSectionsOfClass", response_model=List[ClassSectionSemesterOutDataType])
+async def list_all_sections_of_a_class(
+    school_class_id: int,
+    admin_id: int,
+    token_data: union_of_all_permission_types= Depends(can_view_section)
+):
+    return await ClassSectionSemester.filter(
+        school_class_id=school_class_id, admin_id=admin_id, active=True
+    ).values()
+
+@icm_router.put("/editClassSection", response_model=ClassSectionSemesterOutDataType)
+async def edit_class_section_data(
+    section_data: ClassSectionSemeseterDataType,
+    section_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
+    token_data: union_of_all_permission_types=Depends(can_create_section)
+):  
+    data = section_data.dict()
+    data["updated_by_id"]=token_data.user_id
+    @atomic()
+    async def do():
+        olddata = await ClassSectionSemester.get(section_id=section_id, admin_id=admin_id, active=True).values()
+        if section_data.class_teacher_id != olddata["class_teacher_id"]:
+            if olddata["class_teacher_id"] is not None:
+                olddesignation = await Designation.get(role_instance_id=olddata["class_teacher_id"], role=RolesEnum.institutestaff)
+                oldpermissions = InstituteStaffPermissionJsonType(**olddesignation.permissions_json)
+                if section_id in oldpermissions.class_teacher_of_section_ids:
+                    oldpermissions.class_teacher_of_section_ids.remove(section_id)
+                olddesignation.permissions_json = oldpermissions.dict()
+                await olddesignation.save()
+            if section_data.class_teacher_id is not None:
+                designation = await Designation.get(role_instance_id=section_data.class_teacher_id, role=RolesEnum.institutestaff)
+                permissions = InstituteStaffPermissionJsonType(**designation.permissions_json)
+                permissions.class_teacher_of_section_ids.append(section_id)
+                designation.permissions_json = permissions.dict()
+                await designation.save()
+        if section_data.vice_class_teacher_id != olddata["vice_class_teacher_id"]:
+            if olddata["vice_class_teacher_id"] is not None:
+                olddesignation = await Designation.get(role_instance_id=olddata["vice_class_teacher_id"], role=RolesEnum.institutestaff)
+                oldpermissions = InstituteStaffPermissionJsonType(**olddesignation.permissions_json)
+                if section_id in oldpermissions.vice_class_teacher_of_section_ids:
+                    oldpermissions.vice_class_teacher_of_section_ids.remove(section_id)
+                olddesignation.permissions_json = oldpermissions.dict()
+                await olddesignation.save()
+            if section_data.vice_class_teacher_id is not None:
+                designation = await Designation.get(role_instance_id=section_data.vice_class_teacher_id, role=RolesEnum.institutestaff)
+                permissions = InstituteStaffPermissionJsonType(**designation.permissions_json)
+                permissions.vice_class_teacher_of_section_ids.append(section_id)
+                designation.permissions_json = permissions.dict()
+                await designation.save()
+        if section_data.class_monitor_id != olddata["class_monitor_id"]:
+            if olddata["class_monitor_id"] is not None:
+                olddesignation = await Designation.get(role_instance_id=olddata["class_monitor_id"], role=RolesEnum.student)
+                oldpermissions = StudentPermissionJsonType(**olddesignation.permissions_json)
+                oldpermissions.is_class_monitor=False
+                olddesignation.permissions_json = oldpermissions.dict()
+                await olddesignation.save()
+            if section_data.class_monitor_id is not None:
+                designation = await Designation.get(role_instance_id=section_data.class_monitor_id, role=RolesEnum.student)
+                permissions = StudentPermissionJsonType(**designation.permissions_json)
+                permissions.is_class_monitor=True
+                designation.permissions_json = permissions.dict()
+                await designation.save()
+        if section_data.vice_class_monitor_id != olddata["vice_class_monitor_id"]:
+            if olddata["vice_class_monitor_id"] is not None:
+                olddesignation = await Designation.get(role_instance_id=olddata["vice_class_monitor_id"], role=RolesEnum.student)
+                oldpermissions = StudentPermissionJsonType(**olddesignation.permissions_json)
+                oldpermissions.is_vice_class_monitor=False
+                olddesignation.permissions_json = oldpermissions.dict()
+                await olddesignation.save()
+            if section_data.vice_class_monitor_id is not None:
+                designation = await Designation.get(role_instance_id=section_data.vice_class_monitor_id, role=RolesEnum.student)
+                permissions = StudentPermissionJsonType(**designation.permissions_json)
+                permissions.is_vice_class_monitor=True
+                designation.permissions_json = permissions.dict()
+                await designation.save()
+        await ClassSectionSemester.filter(section_id=section_id, admin_id=admin_id, active=True).update(**data)
+        updateddata = await ClassSectionSemester.filter(section_id=section_id, admin_id=admin_id, active=True).values()
+        if len(updateddata)==0:
+            raise HTTPException(406, "section_id is not valid.")
+        return updateddata[0]
+    return await do()
+
+@icm_router.post("/addSubjectTeachersToClassSection", response_model=SubjectAdditionOutDataType)
+async def add_subjects_to_class_section(
+    subject_data: List[SubjectAdditionDataType],
+    admin_id: int = Body(embed=True),
+    section_id: int=Body(embed=True),
+    token_data: union_of_all_permission_types = Depends(can_create_section)
+):
+    for sub in subject_data:
+        data = sub.dict()
+        data["updated_by_id"]=token_data.user_id
+        subject_id = sub.subject_id
+        del data["subject_id"]
+        data["active"]=True
+        await SectionSubject.update_or_create(
+            defaults=data,
+            subject_id=subject_id,
+            section_id=section_id
+        )
+    allsubjects = await SectionSubject.filter(section_id=section_id, active=True).values()
+    return {"section_id": section_id, "subjects": allsubjects}
+
+@icm_router.get("/getSectionData", response_model=SectionGetDataType)
+async def get_class_section_data(
+    section_id: int,
+    admin_id: int,
+    token_data: union_of_all_permission_types=Depends(can_view_section)
+):
+    class_section_data = await ClassSectionSemester.get(
+        section_id=section_id,
+        admin_id=admin_id,
+        active=True
+    ).prefetch_related("subjects")
+    subjects = await class_section_data.subjects.filter(active=True).values()
+    return {
+        **class_section_data.__dict__,
+        "subjects": subjects
+    }

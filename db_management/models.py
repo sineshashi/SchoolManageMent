@@ -14,6 +14,8 @@ class RolesEnum(str, enum.Enum):
     superadmin = "superadmin"
     admin = "admin"
     institutestaff = "institutestaff"
+    parentgaurdian = "parentgaurdian"
+    student = "student"
 
 class GenderEnum(str, enum.Enum):
     male="M"
@@ -132,7 +134,7 @@ class InstituteStaff(Model):
     admin = fields.ForeignKeyField("models.Admin", related_name="institute_staff", on_delete=fields.CASCADE, index=True)
     super_admin_level = fields.BooleanField(default=False, index=True)
     name = fields.CharField(max_length=500, index=True)
-    phone_number = fields.CharField(max_length=20, index=True, validators = [validate_phone_number], unique=True)
+    phone_number = fields.CharField(max_length=20, index=True, validators = [validate_phone_number])
     email = fields.CharField(max_length=500, validators = [validate_email], unique=True)
     father_name = fields.CharField(max_length=500)
     mother_name = fields.CharField(max_length=500)
@@ -329,11 +331,11 @@ class AcademicSessionAndSemester(Model):
     updated_by = fields.ForeignKeyField("models.UserDB", related_name="updated_semesters", on_delete=fields.SET_NULL, null=True)
 
 class ClassSectionSemester(Model):
-    id = fields.IntField(pk=True, index=True)
+    section_id = fields.IntField(pk=True, index=True)
     semester = fields.ForeignKeyField("models.AcademicSessionAndSemester", "classes", fields.SET_NULL, null=True, index=True)
     admin = fields.ForeignKeyField("models.Admin", "class_section_semester", fields.CASCADE, index=True)
     school_class = fields.ForeignKeyField("models.Class", "semester_class", fields.CASCADE, index=True)
-    section = fields.CharField(max_length=255, index=True, null=True)
+    section_name = fields.CharField(max_length=255, index=True, null=True)
     class_teacher = fields.ForeignKeyField("models.InstituteStaff", "class_teacher_of", fields.SET_NULL, null=True)
     vice_class_teacher = fields.ForeignKeyField("models.InstituteStaff", "vice_class_teacher_of", fields.SET_NULL, null=True)
     class_monitor = fields.ForeignKeyField("models.Student", "class_monitor_of", fields.SET_NULL, null=True)
@@ -359,7 +361,7 @@ class StudentSememster(Model):
     id = fields.IntField(pk=True, index=True)
     student = fields.ForeignKeyField("models.Student", "students_semester_details", fields.CASCADE, index=True)
     admin = fields.ForeignKeyField("models.Admin", "students_in_semester", fields.CASCADE, index=True)
-    class_section = fields.ForeignKeyField("models.ClassSectionSemester", "students_of_class", fields.CASCADE, index=True)
+    section = fields.ForeignKeyField("models.ClassSectionSemester", "students_of_class", fields.CASCADE, index=True)
     subjects = fields.ManyToManyField("models.SectionSubject", "students_with_subject", fields.SET_NULL, null=True)
     active = fields.BooleanField(default=True, index=True, null=False)
     created_at = UTCDateTimeField(null=True)

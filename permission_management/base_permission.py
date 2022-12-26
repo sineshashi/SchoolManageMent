@@ -49,6 +49,8 @@ class InstituteStaffPermissionJsonType(BaseModel):
     vice_head_of_class_groupids: List[int]=[]
     head_of_class_ids: List[int]=[]
     vice_head_of_class_ids: List[int]= []
+    class_teacher_of_section_ids: List[int]=[]
+    vice_class_teacher_of_section_ids: List[int]=[]
 
 class InstituteStaffPermissionReturnType(PermissionReturnDataType):
     permissions_json: InstituteStaffPermissionJsonType
@@ -56,9 +58,19 @@ class InstituteStaffPermissionReturnType(PermissionReturnDataType):
     super_admin_id: int
     super_admin_level: bool = False
 
+class StudentPermissionJsonType(BaseModel):
+    is_class_monitor: Optional[bool]=False
+    is_vice_class_monitor: Optional[bool]=False
+
+class StudentPermissionReturnType(PermissionReturnDataType):
+    permissions_json: StudentPermissionJsonType
+    admin_id: int
+    section_id: int
+
 
 union_of_all_permission_types = Union[AppStaffPermissionReturnDataType, AdminPermissionReturnDataType,
-                                      SuperAdminPermissionReturnDataType, PermissionReturnDataType, InstituteStaffPermissionReturnType]
+                                      SuperAdminPermissionReturnDataType, PermissionReturnDataType,
+                                      InstituteStaffPermissionReturnType, StudentPermissionReturnType]
 
 
 class PermissionManager:
