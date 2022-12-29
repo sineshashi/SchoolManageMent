@@ -68,6 +68,9 @@ class StudentPermissionReturnType(PermissionReturnDataType):
     section_id: int
     subject_ids: List[int]=[]
 
+class ParentGaurdianPermissionReturnType(PermissionReturnDataType):
+    permission_json:dict={}
+
 union_of_all_permission_types = Union[AppStaffPermissionReturnDataType, AdminPermissionReturnDataType,
                                       SuperAdminPermissionReturnDataType, PermissionReturnDataType,
                                       InstituteStaffPermissionReturnType, StudentPermissionReturnType]

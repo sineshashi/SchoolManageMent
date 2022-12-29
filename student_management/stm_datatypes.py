@@ -1,5 +1,5 @@
 from tortoise.contrib.pydantic import pydantic_model_creator
-from db_management.models import Student
+from db_management.models import Student, ParentGaurdian
 from pydantic import BaseModel, Extra
 from typing import List, Optional
 import datetime
@@ -39,3 +39,14 @@ class CreateStudentOutDataType(BaseModel):
 class StudentClassSectionDataType(BaseModel):
     section_id: int
     subject_ids: List[int]=[]
+
+ParentGaurdianDatatype = pydantic_model_creator(ParentGaurdian, exclude_readonly=True)
+
+class ParentGaurdianDataTypeOut(ParentGaurdianDatatype):
+    id: int
+    admin_id: int
+    updated_by_id: int
+    user_id: int
+
+    class Config:
+        extra = Extra.ignore

@@ -186,7 +186,7 @@ class EducationDetail(Model):
 
 class ParentGaurdian(Model):
     id = fields.IntField(pk=True, index=True)
-    user=fields.OneToOneField("models.UserDB","gaurdian",on_delete=fields.SET_NULL,null=True, index=True)
+    user=fields.ForeignKeyField("models.UserDB","gaurdian",on_delete=fields.SET_NULL,null=True, index=True)
     is_gaurdian=fields.BooleanField(default=False)
     prename=fields.CharEnumField(PreNameEnum, max_length=20,null=True)
     first_name = fields.CharField(max_length=500, index=True, null=False)
