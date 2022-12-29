@@ -66,7 +66,7 @@ class StudentPermissionReturnType(PermissionReturnDataType):
     permissions_json: StudentPermissionJsonType
     admin_id: int
     section_id: int
-
+    subject_ids: List[int]=[]
 
 union_of_all_permission_types = Union[AppStaffPermissionReturnDataType, AdminPermissionReturnDataType,
                                       SuperAdminPermissionReturnDataType, PermissionReturnDataType,
@@ -105,6 +105,8 @@ class PermissionManager:
             return AdminPermissionReturnDataType(**user_claims["user_claims"])
         if role == RolesEnum.institutestaff:
             return InstituteStaffPermissionReturnType(**user_claims["user_claims"])
+        if role == RolesEnum.student:
+            return StudentPermissionReturnType(**user_claims["user_claims"])
 
     @staticmethod
     def validate(optional: bool = False, token: str = "access"):

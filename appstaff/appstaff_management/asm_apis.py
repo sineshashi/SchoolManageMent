@@ -8,7 +8,7 @@ from tortoise.transactions import atomic
 from fastapi.exceptions import HTTPException
 import datetime
 from typing import Optional
-from auth.auth_config import pwd_context
+from auth.auth_logic import create_password_from_dob
 from fastapi import Body
 
 router = APIRouter()
@@ -39,9 +39,8 @@ async def create_new_staff(
             password = None
             if not user_found:
                 dob: datetime.date = profileData.dob
-                password = dob.isoformat()
-                password = "".join(password.split("-"))
-                user = await UserDB.create(username=username, password=pwd_context.hash(password))
+                password, hashed_password = create_password_from_dob(dob)
+                user = await UserDB.create(username=username, password=hashed_password)
                 user = await UserDB.get_or_none(user_id=user.user_id).values()
             if await Designation.exists(user_id=user["user_id"], active=True):
                 raise HTTPException(405, "This user has already a different role.")

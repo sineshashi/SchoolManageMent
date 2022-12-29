@@ -325,6 +325,7 @@ class AcademicSessionAndSemester(Model):
     semester_number = fields.IntField(default=0) #0 means semester not applied.
     semester_start_date = fields.DateField(null=True)
     semester_end_date = fields.DateField(null=True)
+    current = fields.BooleanField(default=True, index=True, null=False)
     active = fields.BooleanField(default=True, index=True, null=False)
     created_at = UTCDateTimeField(null=True)
     updated_at = UTCDateTimeField(null=True)

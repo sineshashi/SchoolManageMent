@@ -10,7 +10,7 @@ from typing import List, Optional
 from tortoise.transactions import atomic
 from fastapi.exceptions import HTTPException
 from fastapi import Body
-from auth.auth_config import pwd_context
+from auth.auth_logic import create_password_from_dob
 
 router = APIRouter()
 
@@ -39,9 +39,8 @@ async def add_institute_staff_at_any_level(
         password = None
         if len(user) == 0:
             dob: datetime.date = staff_data.dob
-            password = dob.isoformat()
-            password = "".join(password.split("-"))
-            user = await UserDB.create(username=username, password=pwd_context.hash(password))
+            password, hashed_password = create_password_from_dob(dob)
+            user = await UserDB.create(username=username, password=hashed_password)
             user = await UserDB.filter(user_id=user.user_id).values(
                 username="username",
                 created_at="created_at",

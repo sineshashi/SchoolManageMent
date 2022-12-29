@@ -1,5 +1,41 @@
 from tortoise.contrib.pydantic import pydantic_model_creator
 from db_management.models import Student
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
+from typing import List, Optional
+import datetime
+from permission_management.base_permission import StudentPermissionJsonType
 
 StudentDataType = pydantic_model_creator(Student, exclude_readonly=True)
+class StudentDataTypeOut(StudentDataType):
+    id: int
+    father_id: Optional[int]=None
+    mother_id: Optional[int]=None
+    gaurdian_id: Optional[int]=None
+    user_id: int
+    admin_id: int
+    updated_by_id: Optional[int]
+
+    class Config:
+        extra = Extra.ignore
+
+class LogInCredentialsDataType(BaseModel):
+    username: str
+    password: str
+
+class DesignationDatatype(BaseModel):
+    id: int
+    designation: str
+    role: str
+    from_time: Optional[datetime.datetime]=None
+    permissions_json: StudentPermissionJsonType
+
+class CreateStudentOutDataType(BaseModel):
+    student_data: StudentDataTypeOut
+    login_credentials: LogInCredentialsDataType
+    section_id: int
+    subjects: List[int]=[]
+    designation_data: DesignationDatatype
+
+class StudentClassSectionDataType(BaseModel):
+    section_id: int
+    subject_ids: List[int]=[]

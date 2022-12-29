@@ -1,8 +1,10 @@
 from typing import Union
 from auth.auth_datatypes import DesignationDataTypeOutForAuth, UserDataType, UserLoginIN
-from permission_management.base_permission import InstituteStaffPermissionJsonType,AdminPermissionReturnDataType, AppStaffPermissionReturnDataType, InstituteStaffPermissionReturnType, SuperAdminPermissionReturnDataType
+from permission_management.base_permission import StudentPermissionJsonType,StudentPermissionReturnType, InstituteStaffPermissionJsonType,AdminPermissionReturnDataType, AppStaffPermissionReturnDataType, InstituteStaffPermissionReturnType, SuperAdminPermissionReturnDataType
 from .auth_config import pwd_context
-from db_management.models import Admin, AppStaff, Designation, InstituteStaff, RolesEnum, SuperAdmin, UserDB
+from db_management.models import (
+    Admin, AppStaff, Designation, InstituteStaff, RolesEnum, SuperAdmin, UserDB, Student, ClassSectionSemester,
+    StudentSememster)
 from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
 from fastapi.exceptions import HTTPException
 from fastapi_jwt_auth import AuthJWT
@@ -185,6 +187,41 @@ class TokenCreationManager:
         }
 
     @staticmethod
+    async def get_user_claims_for_student(user_data: UserDataType, designation_data: DesignationDataTypeOutForAuth):
+        if designation_data.role != RolesEnum.student:
+            raise HTTPException(500, "Wrong function called. Cantact to Backend.")
+        
+        try:
+            student_data=await Student.get(id=designation_data.role_instance_id, user_id=user_data.user_id, active=True, blocked=False)
+        except DoesNotExist:
+            raise HTTPException(401, 'User Data has been deleted or deactivated.')
+        except Exception as e:
+            raise e
+        
+        designation_data.permissions_json = StudentPermissionJsonType(**designation_data.permissions_json)
+        sections = await StudentSememster.filter(student_id=student_data.id, active=True).values_list('section_id', flat=True)
+        class_data = await ClassSectionSemester.filter(section_id__in=list(sections), semester__current=True, active=True).values(
+            section_id="section_id",
+            admin_id="admin_id"
+        )
+        if len(class_data)!=1:
+            raise HTTPException(401, "Data has been saved in many active classes or not in any.")
+        section_data = await StudentSememster.get(section_id=class_data[0]["section_id"], student_id=student_data.id).prefetch_related("subjects")
+        subject_ids = await section_data.subjects.filter(active=True).values_list("subject_id", flat=True)
+        other_data={
+            "user_data": convert_datetime_of_vals_to_str(user_data),
+            "designation_data": convert_datetime_of_vals_to_str(designation_data),
+            "user_personal_data": convert_datetime_of_vals_to_str(student_data.__dict__)
+        }
+        user_claims = StudentPermissionReturnType(
+            user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id, role=RolesEnum.student,
+            designation=designation_data.designation, designation_id=designation_data.designation_id,
+            permissions_json=designation_data.permissions_json, admin_id=class_data[0]["admin_id"],
+            section_id=class_data[0]["section_id"], subject_ids=list(subject_ids), other_data=other_data
+        )
+        return {"user_claims": user_claims}
+
+    @staticmethod
     async def get_access_token(auth: AuthJWT, user_claims: Union[AppStaffPermissionReturnDataType, SuperAdminPermissionReturnDataType, AdminPermissionReturnDataType]):
         access_token = auth.create_access_token(
             subject=user_claims.role,
@@ -213,6 +250,8 @@ class TokenCreationManager:
             user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_admin(userdata, designation_data)
         elif designation_data.role == RolesEnum.institutestaff:
             user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_institute_staff(userdata, designation_data)
+        elif designation_data.role == RolesEnum.student:
+            user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_student(userdata, designation_data)
         else:
             raise HTTPException(401, "Some invalid user type found.")
 

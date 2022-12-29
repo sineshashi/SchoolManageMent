@@ -8,7 +8,7 @@ from tortoise.transactions import atomic
 from db_management.designations import DesignationManager
 from db_management.models import Admin, Designation, RolesEnum, SuperAdmin, UserDB
 from permission_management.base_permission import is_app_staff_or_super_admin_for_post,is_app_staff_or_admin_under_super_admin, union_of_all_permission_types, is_app_staff, is_app_staff_or_admin, is_app_staff_or_super_admin, is_fresh_appstaff
-from auth.auth_config import pwd_context
+from auth.auth_logic import create_password_from_dob
 from fastapi import Body
 
 router = APIRouter()
@@ -35,9 +35,8 @@ async def create_superadmin(
         password = None
         if len(user) == 0:
             dob: datetime.date = super_admin_data.dob
-            password = dob.isoformat()
-            password = "".join(password.split("-"))
-            user = await UserDB.create(username=username, password=pwd_context.hash(password))
+            password, hashed_password = create_password_from_dob(dob)
+            user = await UserDB.create(username=username, password=hashed_password)
             user = await UserDB.filter(user_id=user.user_id).values(
                 username="username",
                 created_at="created_at",
@@ -110,9 +109,8 @@ async def create_admin(
         password = None
         if not user_found:
             dob: datetime.date = admin_data.dob
-            password = dob.isoformat()
-            password = "".join(password.split("-"))
-            user = await UserDB.create(username=username, password=pwd_context.hash(password))
+            password, hashed_password = create_password_from_dob(dob)
+            user = await UserDB.create(username=username, password=hashed_password)
             user = await UserDB.filter(user_id=user.user_id).values(
                 username="username",
                 created_at="created_at",

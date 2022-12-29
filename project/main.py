@@ -3,6 +3,7 @@ import auth.auth_apis as auth_apis
 import appstaff.onboarding.onboard_apis as onboarding_apis
 import institute_staff_management.ism_apis as ism_apis
 import institute_conf_management.icm_apis as icm_apis
+import student_management.stm_apis as stm_apis
 import auth.auth_config as authCofig
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,6 +41,10 @@ tags_metadata = [
             'head_id' and 'vice_head_id' are institutestaffids.
             THEY ARE NOT USER IDS. DO NOT CONFUSE THEM WITH USERIDS.
             '''
+    },
+    {
+        "name": "Student Management",
+        "description": "APIs related to student crud are here."
     }
 ]
 
@@ -123,4 +128,10 @@ app.include_router(
     router=icm_apis.icm_router,
     prefix="/icm",
     tags = ["Institute Configuration Management"]
+)
+
+app.include_router(
+    router=stm_apis.router,
+    prefix="/stm",
+    tags=["Student Management"]
 )
