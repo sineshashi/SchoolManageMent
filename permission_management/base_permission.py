@@ -69,7 +69,7 @@ class StudentPermissionReturnType(PermissionReturnDataType):
     subject_ids: List[int]=[]
 
 class ParentGaurdianPermissionJsonType(BaseModel):
-    gaurdee_student_ids=List[int]=[]
+    gaurdee_student_ids:List[int]=[]
 
 class ParentGaurdianPermissionReturnType(PermissionReturnDataType):
     permissions_json:ParentGaurdianPermissionJsonType
