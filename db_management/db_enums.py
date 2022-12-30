@@ -19,3 +19,8 @@ class IdentityProofEnum(str, Enum):
     pan_card = "PAN CARD"
     driving_licence = "Driving Licence"
     passport = "PASSPORT"
+
+class GaurdianTypeEnum(str, Enum):
+    father="father"
+    mother="mother"
+    other="other"

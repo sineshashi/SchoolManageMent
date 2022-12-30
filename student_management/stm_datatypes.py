@@ -50,3 +50,7 @@ class ParentGaurdianDataTypeOut(ParentGaurdianDatatype):
 
     class Config:
         extra = Extra.ignore
+
+class ParentGaurdianCreateDataTypeOut(BaseModel):
+    parent_data: ParentGaurdianDataTypeOut
+    login_credentials: Optional[LogInCredentialsDataType]=None

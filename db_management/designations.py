@@ -32,13 +32,17 @@ class StudentDesignations(str, Enum):
     student = "Student"
     vice_monitor = "Vice Monitor"
 
+class GaudianDesignations(str, Enum):
+    gaurdian = "gaurdian"
+
 class DesignationManager:
     role_designation_map = {
         "appstaff": AppStaffDesignations,
         "superadmin": SuperAdminDesignations,
         "admin": AdminDesignations,
         "institutestaff": InstituteStaffDesignations,
-        "student": StudentDesignations
+        "student": StudentDesignations,
+        "parentgaurdian": GaudianDesignations
     }
     @staticmethod
     def validate_designation(role:str, designation:str):
