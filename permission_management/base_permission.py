@@ -68,8 +68,16 @@ class StudentPermissionReturnType(PermissionReturnDataType):
     section_id: int
     subject_ids: List[int]=[]
 
+class StudentDetails(BaseModel):
+    student_id: int
+    first_name: str
+    middle_name: Optional[str]=None
+    last_name: Optional[str]=None
+    admin_id: int
+    super_admin_id: int
+
 class ParentGaurdianPermissionJsonType(BaseModel):
-    gaurdee_student_ids:List[int]=[]
+    gaurdee_students:List[StudentDetails]=[]
 
 class ParentGaurdianPermissionReturnType(PermissionReturnDataType):
     permissions_json:ParentGaurdianPermissionJsonType
@@ -114,6 +122,8 @@ class PermissionManager:
             return InstituteStaffPermissionReturnType(**user_claims["user_claims"])
         if role == RolesEnum.student:
             return StudentPermissionReturnType(**user_claims["user_claims"])
+        if role == RolesEnum.parentgaurdian:
+            return ParentGaurdianPermissionReturnType(**user_claims["user_claims"])
 
     @staticmethod
     def validate(optional: bool = False, token: str = "access"):

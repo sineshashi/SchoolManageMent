@@ -3,9 +3,9 @@ from permission_management.base_permission import (union_of_all_permission_types
                                                    StudentPermissionJsonType, ParentGaurdianPermissionJsonType)
 from db_management.designations import DesignationManager
 from db_management import models
-from .stm_datatypes import (ParentGaurdianCreateDataTypeOut,
+from .stm_datatypes import (ParentGaurdianCreateDataTypeOut, ParentGaurdianGetDataTypeOut,
                             ParentGaurdianDatatype, StudentDataType, CreateStudentOutDataType,
-                            StudentDataTypeOut, StudentClassSectionDataType)
+                            StudentDataTypeOut, StudentClassSectionDataType, StudentWithParentDataTypeOut)
 from permission_management.student_permissions import (can_add_student, can_view_list_of_students,
                                                        can_view_student)
 from typing import List, Optional
@@ -257,13 +257,16 @@ async def add_parent_of_gaurdian_data(
     '''
     In case of other gaurdian type, pass relation_with_kid i.e. brother, uncle etc.
     In case of adding new gaurdian, it will replace the old gaurdian.
+    prename: Mr., Mrs., Ms., Late
     '''
     if gaurdian_type == GaurdianTypeEnum.other and (relation_with_kid is None or not parent_data.is_gaurdian):
         raise HTTPException(406, "Please pass relation_with_kid")
-    student_obj = await models.Student.get(id=student_id, admin_id=admin_id, active=True)
-    if student_obj.father is not None and gaurdian_type == GaurdianTypeEnum.father:
+    student_obj = await models.Student.get(id=student_id, admin_id=admin_id, active=True).prefetch_related(
+        "father", "mother", "gaurdian"
+    )
+    if await student_obj.father is not None and gaurdian_type == GaurdianTypeEnum.father:
         raise HTTPException(406, "Father Data has already been added.")
-    if student_obj.mother is not None and gaurdian_type == GaurdianTypeEnum.mother:
+    if await student_obj.mother is not None and gaurdian_type == GaurdianTypeEnum.mother:
         raise HTTPException(406, "Mother Data has already been added.")
 
     @atomic()
@@ -271,20 +274,49 @@ async def add_parent_of_gaurdian_data(
         password = None
         username = None
         parent_obj = await models.ParentGaurdian.create(**parent_data.dict(), updated_by_id=token_data.user_id)
+        if await student_obj.gaurdian is not None and parent_data.is_gaurdian:
+            try:
+                old_designation = await models.Designation.get(
+                    role_instance_id = await student_obj.gaurdian.id,
+                    role = models.RolesEnum.parentgaurdian,
+                    active=True
+                )
+                permissions_json_old:ParentGaurdianPermissionJsonType = old_designation.permissions_json
+                gaurdee_students = []
+                for i, stdt in enumerate(permissions_json_old.gaurdee_students):
+                    if stdt.student_id!=i:
+                        gaurdee_students.append(stdt)
+                permissions_json_old.gaurdee_students = gaurdee_students
+                old_designation.permissions_json=permissions_json_old.dict()
+                await old_designation.save()
+                gaurdian = await student_obj.gaurdian
+                gaurdian.is_gaurdian=False
+                await gaurdian.save()
+            except:
+                pass
+
         if parent_data.is_gaurdian:
-            users = await models.ParentGaurdian.filter(username=parent_data.phone_number.strip(), active=True)
+            users = await models.UserDB.filter(username=parent_data.phone_number.strip(), active=True)
             if len(users) == 0:
                 dob = parent_data.date_of_birth
-                password = create_password_from_dob(dob)
+                password, hashed_password= create_password_from_dob(dob)
                 username = parent_data.phone_number.strip()
-                user = await models.UserDB.create(username=username, password=password)
+                user = await models.UserDB.create(username=username, password=hashed_password)
                 permission_json=ParentGaurdianPermissionJsonType()
-                permission_json.gaurdee_student_ids.append(student_id)
+                student_data = await models.Student.filter(id=student_id, admin_id=admin_id, active=True).values(
+                    admin_id="admin_id",
+                    super_admin_id="admin__super_admin_id",
+                    student_id="id",
+                    first_name="first_name",
+                    middle_name="middle_name",
+                    last_name="last_name"
+                )
+                permission_json.gaurdee_students.append(student_data[0])
                 await models.Designation.create(
                     user_id=user.user_id,
                     role=models.RolesEnum.parentgaurdian,
                     role_instance_id=parent_obj.id,
-                    designation=DesignationManager.role_designation_map[models.RolesEnum.parentgaurdian],
+                    designation=DesignationManager.role_designation_map[models.RolesEnum.parentgaurdian].gaurdian,
                     permissions_json=permission_json.dict()
                 )
             else:
@@ -294,7 +326,15 @@ async def add_parent_of_gaurdian_data(
                     role=models.RolesEnum.parentgaurdian,
                     active=True
                 )
-                designation_data.permissions_json["gaurdee_student_ids"].append(student_id)
+                student_data = await models.Student.filter(id=student_id, admin_id=admin_id, active=True).values(
+                    admin_id="admin_id",
+                    super_admin_id="admin__super_admin_id",
+                    student_id="id",
+                    first_name="first_name",
+                    middle_name="middle_name",
+                    last_name="last_name"
+                )
+                designation_data.permissions_json["gaurdee_students"].append(student_data[0])
                 await designation_data.save()
 
             parent_obj.user = user
@@ -314,6 +354,131 @@ async def add_parent_of_gaurdian_data(
         else:
             return {
                 "parent_data": parent_obj.__dict__,
+                "login_credentials": {"username": username, "password": password}
+            }
+    return await do()
+
+@router.get("/listParentAndGaurdianDetails", response_model=StudentWithParentDataTypeOut)
+async def list_all_students_of_gaurdian(
+    student_id: int,
+    admin_id: int,
+    token_data: union_of_all_permission_types=Depends(can_view_student)
+):
+    student = await models.Student.get(id=student_id, admin_id=admin_id, active=True).prefetch_related(
+        "father", "mother", "gaurdian"
+    )
+    data = {"student_data": student.__dict__, "parent_and_gaurdians": []}
+    father = await student.father
+    if father is not None:
+        data["parent_and_gaurdians"].append(father.__dict__)
+        data["parent_and_gaurdians"][-1]["relation_with_kid"]="father"
+
+    mother = await student.mother
+    if father is not None:
+        data["parent_and_gaurdians"].append(mother.__dict__)
+        data["parent_and_gaurdians"][-1]["relation_with_kid"]="mother"
+
+    gaurdian = await student.gaurdian
+    if father is not None:
+        data["parent_and_gaurdians"].append(gaurdian.__dict__)
+        data["parent_and_gaurdians"][-1]["relation_with_kid"]="gaurdian"
+    return data
+
+@router.put("/editParentGaurdian", response_model=ParentGaurdianCreateDataTypeOut)
+async def edit_parent_gaurdian_details(
+    gaurdian_data: ParentGaurdianDatatype,
+    parent_id: int = Body(embed=True, description="Gaurdian Id or ParentID"),
+    student_id: int = Body(embed=True),
+    admin_id: int = Body(embed=True),
+    token_data: union_of_all_permission_types=Depends(can_add_student)
+):
+    '''
+    If new gaurdian is added, it will replace the old gaurdian.
+    '''
+    data = gaurdian_data.dict()
+    data["updated_by_id"]=token_data.user_id
+    @atomic()
+    async def do():
+        parentobj = await models.ParentGaurdian.get(id=parent_id, active=True).prefetch_related("user")
+        studentobj = await models.Student.get(id=student_id, admin_id=admin_id, active=True).prefetch_related(
+            "gaurdian"
+        )
+
+        username=None
+        password=None
+        if gaurdian_data.is_gaurdian and not parentobj.is_gaurdian:
+            gaurdianobj = await studentobj.gaurdian
+            if gaurdianobj is not None:
+                try:
+                    old_designation = await models.Designation.get(
+                        role_instance_id = await studentobj.gaurdian.id,
+                        role = models.RolesEnum.parentgaurdian,
+                        active=True
+                    )
+                    permissions_json_old:ParentGaurdianPermissionJsonType = old_designation.permissions_json
+                    gaurdee_students = []
+                    for i, stdt in enumerate(permissions_json_old.gaurdee_students):
+                        if stdt.student_id!=i:
+                            gaurdee_students.append(stdt)
+                    permissions_json_old.gaurdee_students = gaurdee_students
+                    old_designation.permissions_json=permissions_json_old.dict()
+                    await old_designation.save()
+                    gaurdian = await studentobj.gaurdian
+                    gaurdian.is_gaurdian=False
+                    await gaurdian.save()
+                except:
+                    pass
+
+            if await parentobj.user is None:
+                dob = parentobj.date_of_birth
+                password, hashed_password= create_password_from_dob(dob)
+                username = parentobj.phone_number.strip()
+                user = await models.UserDB.create(username=username, password=hashed_password)
+                permission_json=ParentGaurdianPermissionJsonType()
+                student_data = await models.Student.filter(id=student_id, admin_id=admin_id, active=True).values(
+                    admin_id="admin_id",
+                    super_admin_id="admin__super_admin_id",
+                    student_id="id",
+                    first_name="first_name",
+                    middle_name="middle_name",
+                    last_name="last_name"
+                )
+                permission_json.gaurdee_students.append(student_data[0])
+                await models.Designation.create(
+                    user_id=user.user_id,
+                    role=models.RolesEnum.parentgaurdian,
+                    role_instance_id=parentobj.id,
+                    designation=DesignationManager.role_designation_map[models.RolesEnum.parentgaurdian].gaurdian,
+                    permissions_json=permission_json.dict()
+                )
+                data["user_id"]=user.user_id
+            else:
+                designation_data=await models.Designation.get(
+                    user_id=await parentobj.user.id,
+                    role=models.RolesEnum.parentgaurdian,
+                    active=True
+                )
+                student_data = await models.Student.filter(id=student_id, admin_id=admin_id, active=True).values(
+                    admin_id="admin_id",
+                    super_admin_id="admin__super_admin_id",
+                    student_id="id",
+                    first_name="first_name",
+                    middle_name="middle_name",
+                    last_name="last_name"
+                )
+                designation_data.permissions_json["gaurdee_students"].append(student_data[0])
+                await designation_data.save()
+                
+        parentobj.update_from_dict(data)
+        if parentobj.is_gaurdian:
+            studentobj.gaurdian=parentobj
+        await studentobj.save()
+        await parentobj.save()
+        if username is None:
+            return {"parent_data": parentobj.__dict__}
+        else:
+            return {
+                "parent_data": parentobj.__dict__,
                 "login_credentials": {"username": username, "password": password}
             }
     return await do()

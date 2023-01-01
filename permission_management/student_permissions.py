@@ -43,7 +43,7 @@ def can_view_student(admin_id: int, student_id: int, Authorize: AuthJWT = Depend
     ) or (permission_data.role == RolesEnum.student
           and admin_id == permission_data.admin_id and permission_data.role_instance_id == student_id
           ) or (permission_data.role == RolesEnum.parentgaurdian
-                and student_id in permission_data.permissions_json.gaurdee_student_ids
+                and any([(student.student_id==student_id) for student in permission_data.permissions_json.gaurdee_students])
                 ):
         return permission_data
     raise HTTPException(406, "You are not authorized for this action.")

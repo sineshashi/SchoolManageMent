@@ -1,7 +1,7 @@
 from tortoise.contrib.pydantic import pydantic_model_creator
 from db_management.models import Student, ParentGaurdian
 from pydantic import BaseModel, Extra
-from typing import List, Optional
+from typing import List, Optional, Dict
 import datetime
 from permission_management.base_permission import StudentPermissionJsonType
 
@@ -44,9 +44,8 @@ ParentGaurdianDatatype = pydantic_model_creator(ParentGaurdian, exclude_readonly
 
 class ParentGaurdianDataTypeOut(ParentGaurdianDatatype):
     id: int
-    admin_id: int
     updated_by_id: int
-    user_id: int
+    user_id: Optional[int]=None
 
     class Config:
         extra = Extra.ignore
@@ -54,3 +53,19 @@ class ParentGaurdianDataTypeOut(ParentGaurdianDatatype):
 class ParentGaurdianCreateDataTypeOut(BaseModel):
     parent_data: ParentGaurdianDataTypeOut
     login_credentials: Optional[LogInCredentialsDataType]=None
+
+class ParentGaurdianGetDataTypeOut(ParentGaurdianDatatype):
+    id: int
+    updated_by_id: int
+    user_id: Optional[int]=None
+    relation_with_kid: Optional[str]=None
+
+    class Config:
+        extra = Extra.ignore
+
+class StudentWithParentDataTypeOut(BaseModel):
+    student_data: StudentDataTypeOut
+    parent_and_gaurdians: List[ParentGaurdianGetDataTypeOut]=[]
+
+# class ParentGaurdianGetDataTypeOut(BaseModel):
+#     __root__: Dict[int, ]

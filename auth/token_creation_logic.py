@@ -254,7 +254,7 @@ class TokenCreationManager:
             user_id=userdata.user_id, role_instance_id=gaurdian_data[
                 0].id, role=RolesEnum.parentgaurdian,
             designation=desigantiondata.designation, designation_id=desigantiondata.designation_id,
-            other_data=other_data, permission_json=desigantiondata.permissions_json
+            other_data=other_data, permissions_json=desigantiondata.permissions_json
         )
         return {"user_claims": user_claims}
 
