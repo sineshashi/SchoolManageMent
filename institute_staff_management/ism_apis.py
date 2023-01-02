@@ -87,8 +87,17 @@ async def get_info_about_the_staff(staff_id: int, token_data: union_of_all_permi
 
 @router.put("/editStaffData")
 async def edit_staff_data(staff_data_in: institute_staff_data_type, staff_id: int = Body(embed=True),  token_data: union_of_all_permission_types=Depends(can_add_insititute_staff)):
-    await InstituteStaff.filter(id=staff_id).update(**staff_data_in.dict(), created_by_id = token_data.user_id)
-    return await InstituteStaff.get(id=staff_id).values()
+    @atomic()
+    async def do():
+        staff = await InstituteStaff.get(id=staff_id).prefetch_related("user")
+        data = staff_data_in.dict()
+        data["created_by_id"]=token_data.user_id
+        staff.update_from_dict(data)
+        staff.user.update_from_dict({"username": staff.phone_number})
+        await staff.user.save()
+        await staff.save()
+        return await InstituteStaff.get(id=staff_id).values()
+    return await do()
 
 @router.put("/editDesignationAndPermissionForStaff")
 async def edit_designation_data_permission_data_for_staff(designation_data: DesignationDataTypeForInstituteStaff, designation_id:int=Body(embed=True), token_data: union_of_all_permission_types = Depends(can_add_insititute_staff)):

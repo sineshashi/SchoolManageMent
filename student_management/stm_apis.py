@@ -125,12 +125,19 @@ async def update_student_profile_data(
     student_id: int = Body(embed=True),
     admin_id: int = Body(embed=True),
     token_data: union_of_all_permission_types = Depends(can_add_student)
-):
-    await models.Student.filter(id=student_id, admin_id=admin_id, active=True, blocked=False).update(
-        **student_data.dict(),
-        updated_by_id=token_data.user_id
-    )
-    return await models.Student.filter(id=student_id, admin_id=admin_id, active=True, blocked=False).values()
+):  
+    data = student_data.dict()
+    data["updated_by_id"]=token_data.user_id
+    @atomic()
+    async def do():
+        student = await models.Student.get(
+            id=student_id,admin_id=admin_id, active=True, blocked=False).prefetch_related("user")
+        student.update_from_dict(data)
+        await student.save()
+        student.user.username = student.phone_number
+        await student.user.save()
+        return await models.Student.filter(id=student_id, admin_id=admin_id, active=True, blocked=False).values()
+    return await do()
 
 @router.patch("/changeRollNumber")
 async def change_roll_number(
@@ -470,6 +477,7 @@ async def edit_parent_gaurdian_details(
                 )
                 data["user_id"]=user.user_id
             else:
+                parentobj.user.username = gaurdian_data.phone_number.save()
                 designation_data=await models.Designation.get(
                     user_id=await parentobj.user.id,
                     role=models.RolesEnum.parentgaurdian,

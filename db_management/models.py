@@ -233,7 +233,7 @@ class Student(Model):
     last_name = fields.CharField(max_length=500, null=False, default="")
     date_of_birth = fields.DateField(null=False)
     gender = fields.CharEnumField(GenderEnum, "Gender of Student",max_length=20,null=True, index=True)
-    email = fields.TextField(validators=[validate_email])
+    email = fields.TextField(validators=[validate_email], null=True)
     phone_number = fields.TextField(validators=[validate_phone_number])
     identity_type = fields.CharField(max_length=255, null=True)
     identity_number = fields.CharField(max_length=255, null=True)
