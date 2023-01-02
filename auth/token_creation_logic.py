@@ -125,14 +125,14 @@ class TokenCreationManager:
             raise HTTPException(
                 406, "Wrong data saved in db. Contact the staff as soon as possible.")
 
-        admin_ids = await super_admin_data.admin.values_list("id", flat=True)
+        admin_ids = await Admin.filter(super_admin_id=super_admin_data.id, active=True).values_list("id", flat=True)
         other_data = {
             "user_data": convert_datetime_of_vals_to_str(user_data),
             "designation_data": convert_datetime_of_vals_to_str(designation_data),
             "user_personal_data": convert_datetime_of_vals_to_str(super_admin_data.__dict__)
         }
         user_claims = SuperAdminPermissionReturnDataType(user_id=user_data.user_id, role_instance_id=designation_data.role_instance_id,
-                                                         role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, admin_ids=admin_ids, other_data=other_data)
+                                                         role=designation_data.role, designation=designation_data.designation, designation_id=designation_data.designation_id, admin_ids=list(admin_ids), other_data=other_data)
         return {
             "user_claims": user_claims
         }
