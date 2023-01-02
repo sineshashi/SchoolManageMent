@@ -125,7 +125,7 @@ class TokenCreationManager:
             raise HTTPException(
                 406, "Wrong data saved in db. Contact the staff as soon as possible.")
 
-        admin_ids = await super_admin_data[0].admin.values_list("id", flat=True)
+        admin_ids = await super_admin_data.admin.values_list("id", flat=True)
         other_data = {
             "user_data": convert_datetime_of_vals_to_str(user_data),
             "designation_data": convert_datetime_of_vals_to_str(designation_data),
