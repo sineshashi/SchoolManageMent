@@ -35,8 +35,8 @@ class Trigger(Model):
 
 class UserDB(Model):
     user_id = fields.IntField(pk=True)
-    username = fields.CharField(max_length=100, unique = True, null = False, index = True)
-    password = fields.CharField(max_length=200, null=False)
+    username = fields.CharField(max_length=20, null = False, index = True)
+    password = fields.CharField(max_length=100, null=False)
     active = fields.BooleanField(default=True, index=True)
     created_at = UTCDateTimeField(null=True, index=True)
     updated_at = UTCDateTimeField(null=True, index = True)
@@ -121,6 +121,7 @@ class Admin(Model):
     address_city = fields.TextField()
     address_country = fields.TextField(default = "India")
     address_code = fields.TextField()
+    coordinates = fields.TextField(null=True)
     active = fields.BooleanField(default=True, index=True, null=False)
     blocked = fields.BooleanField(default=False, index=True, null=False)
     pic_url = fields.TextField(null=True)
@@ -364,6 +365,7 @@ class StudentSememster(Model):
     admin = fields.ForeignKeyField("models.Admin", "students_in_semester", fields.CASCADE, index=True)
     section = fields.ForeignKeyField("models.ClassSectionSemester", "students_of_class", fields.CASCADE, index=True)
     subjects = fields.ManyToManyField("models.SectionSubject", "students_with_subject", fields.SET_NULL, null=True)
+    roll_number = fields.CharField(max_length=7, null=True, index=True)
     active = fields.BooleanField(default=True, index=True, null=False)
     created_at = UTCDateTimeField(null=True)
     updated_at = UTCDateTimeField(null=True)

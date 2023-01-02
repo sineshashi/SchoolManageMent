@@ -10,6 +10,7 @@ import datetime
 from typing import Optional
 from auth.auth_logic import create_password_from_dob
 from fastapi import Body
+from pytz import timezone
 
 router = APIRouter()
 
@@ -21,27 +22,20 @@ async def get_all_designations_for_role(role: RolesEnum):
 async def create_new_staff(
     profileData: appstaffDataTypeIn,
     tokenData: union_of_all_permission_types=Depends(is_app_admin),
-    username: str=Body(embed=True),
     designation: str=Body(embed=True),
     designation_start_time: Optional[datetime.datetime] = Body(default=None, embed=True),
     ):
+        username=profileData.phone_number
         if designation_start_time is not None:
-            designation_start_time.astimezone("utc")
-        user = await UserDB.get_or_none(username=username).values()
-        if user is not None:
-            raise HTTPException(status_code=404, detail="User already exists.")
-        user_found = True
-        if user is None:
-            user_found=False
+            designation_start_time.astimezone(timezone("UTC"))
 
         @atomic()
         async def create_staff():
             password = None
-            if not user_found:
-                dob: datetime.date = profileData.dob
-                password, hashed_password = create_password_from_dob(dob)
-                user = await UserDB.create(username=username, password=hashed_password)
-                user = await UserDB.get_or_none(user_id=user.user_id).values()
+            dob: datetime.date = profileData.dob
+            password, hashed_password = create_password_from_dob(dob)
+            user = await UserDB.create(username=username, password=hashed_password)
+            user = await UserDB.get_or_none(user_id=user.user_id).values()
             if await Designation.exists(user_id=user["user_id"], active=True):
                 raise HTTPException(405, "This user has already a different role.")
             

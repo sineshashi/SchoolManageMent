@@ -28,11 +28,13 @@ async def add_new_student(
     username: str = Body(embed=True),
     admin_id: int = Body(embed=True),
     section_id: int = Body(embed=True),
+    roll_number: Optional[str] = Body(embed=True, default=None),
     subject_ids: List[int] = Body(default=[], embed=True, description="Subject IDs of subjects available in class section."),
     designation: DesignationManager.role_designation_map["student"] = Body(embed=True),
     designation_start_time: Optional[datetime.datetime] = Body(default=None, embed=True),
     token_data: union_of_all_permission_types = Depends(can_add_student)
 ):
+    username = student_data.phone_number
     available_subjects = set(await models.SectionSubject.filter(
         section_id=section_id,
         admin_id=admin_id,
@@ -66,7 +68,8 @@ async def add_new_student(
         student_sem_details = await models.StudentSememster.create(
             student_id=student.id,
             section_id=section_id,
-            admin_id=admin_id
+            admin_id=admin_id,
+            roll_number=roll_number
         )
         for subject in subjects:
             await student_sem_details.subjects.add(subject)
@@ -129,6 +132,20 @@ async def update_student_profile_data(
     )
     return await models.Student.filter(id=student_id, admin_id=admin_id, active=True, blocked=False).values()
 
+@router.patch("/changeRollNumber")
+async def change_roll_number(
+    student_id:int= Body(embed=True),
+    section_id: int=Body(embed=True),
+    admin_id: int = Body(embed=True),
+    roll_number: int = Body(embed=True),
+    token_data: union_of_all_permission_types = Depends(can_add_student)
+):
+    await models.StudentSememster.filter(
+        student_id=student_id,
+        section_id=section_id,
+        admin_id=admin_id
+    ).update(roll_number=roll_number)
+    return {"success":True}
 
 @router.delete("/disableStudent", response_model=SuccessReponse)
 async def disable_student(

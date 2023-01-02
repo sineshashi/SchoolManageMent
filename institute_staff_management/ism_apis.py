@@ -20,7 +20,6 @@ async def add_institute_staff_at_any_level(
     staff_data: institute_staff_data_type,
     permissions_json: Optional[InstituteStaffPermissionJsonType]=InstituteStaffPermissionJsonType(),
     admin_id: int=Body(embed=True),
-    username: str=Body(embed=True),
     designation: DesignationManager.role_designation_map[RolesEnum.institutestaff]=Body(embed=True),
     from_time_at_designation: Optional[datetime] = Body(embed=True, default=None),
     token_data: union_of_all_permission_types = Depends(can_add_insititute_staff)):
@@ -29,31 +28,17 @@ async def add_institute_staff_at_any_level(
 
     @atomic()
     async def add_institute_staff():
-        user = await UserDB.filter(username=username).values(
+        username = staff_data.phone_number
+        dob: datetime.date = staff_data.dob
+        password, hashed_password = create_password_from_dob(dob)
+        user = await UserDB.create(username=username, password=hashed_password)
+        user = await UserDB.filter(user_id=user.user_id).values(
             username="username",
             created_at="created_at",
             updated_at="updated_at",
-            user_id="user_id",
-            active="active"
+            user_id = "user_id",
+            active = "active"
         )
-        password = None
-        if len(user) == 0:
-            dob: datetime.date = staff_data.dob
-            password, hashed_password = create_password_from_dob(dob)
-            user = await UserDB.create(username=username, password=hashed_password)
-            user = await UserDB.filter(user_id=user.user_id).values(
-                username="username",
-                created_at="created_at",
-                updated_at="updated_at",
-                user_id = "user_id",
-                active = "active"
-            )
-        else:
-            raise HTTPException(406, "User already exists.")
-
-        if await Designation.exists(user_id=user[0]["user_id"], active=True):
-            raise HTTPException(
-                406, "User already assigned to some other role or designation.")
 
         staff_data_dict = staff_data.dict()
         try:
@@ -71,12 +56,6 @@ async def add_institute_staff_at_any_level(
 
         designation_data = await Designation.get(id=designation_instance.id).values()
         staff_new_data = await InstituteStaff.get(id=staff_instance.id).values()
-        if password is None:
-            return {
-                "user": user[0],
-                "institute_staff": staff_new_data,
-                "designation": designation_data
-            }
         return {
                 "user": user[0],
                 "institute_staff": staff_new_data,

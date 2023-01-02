@@ -14,6 +14,7 @@ from fastapi.exceptions import HTTPException
 from fastapi_jwt_auth import AuthJWT
 import datetime
 from pydantic import BaseModel
+from typing import Optional
 
 
 def verify_password(raw, hashed):
@@ -34,14 +35,19 @@ def convert_datetime_of_vals_to_str(data: Union[dict, BaseModel]):
 
 class TokenCreationManager:
     @staticmethod
-    async def verify_username_password(username: str, password: str) -> UserDataType:
+    async def verify_username_password(password: str, user_id: Optional[int] = None, username: Optional[str] = None) -> UserDataType:
         try:
-            user_data = await UserDB.get(username=username, active=True).values()
+            query = {}
+            if user_id is not None:
+                query["user_id"] = user_id
+            if username is not None:
+                query["username"] = username
+            user_data = await UserDB.get(**query, active=True).values()
         except DoesNotExist:
             raise HTTPException(401, "No such user exists")
         except MultipleObjectsReturned:
             raise HTTPException(401, "Username is duplicated by mistake.")
-        except:
+        except Exception:
             raise HTTPException(500, "Some internal error occured.")
         if not verify_password(password, user_data["password"]):
             raise HTTPException(401, "Invalid Password.")
@@ -276,7 +282,8 @@ class TokenCreationManager:
 
     @staticmethod
     async def validate_and_create_tokens(userinput: UserLoginIN, auth: AuthJWT):
-        userdata: UserDataType = await TokenCreationManager.verify_username_password(userinput.username, userinput.password)
+        userdata: UserDataType = await TokenCreationManager.verify_username_password(
+            user_id=userinput.user_id, password=userinput.password, username=userinput.username)
         designation_data: DesignationDataTypeOutForAuth = await TokenCreationManager.verify_designation_and_fetch(userdata.user_id)
 
         if designation_data.role == RolesEnum.appstaff:
@@ -289,8 +296,8 @@ class TokenCreationManager:
             user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_institute_staff(userdata, designation_data)
         elif designation_data.role == RolesEnum.student:
             user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_student(userdata, designation_data)
-        elif designation_data.role==RolesEnum.parentgaurdian:
-            user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_gaurdian(userdata,designation_data)
+        elif designation_data.role == RolesEnum.parentgaurdian:
+            user_claims_and_personal_data = await TokenCreationManager.get_user_claims_for_gaurdian(userdata, designation_data)
         else:
             raise HTTPException(401, "Some invalid user type found.")
 

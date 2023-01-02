@@ -17,7 +17,6 @@ router = APIRouter()
 async def create_superadmin(
     super_admin_data: SuperAdminDataTypeIn,
     designation: DesignationManager.role_designation_map["superadmin"]=Body(default=None, embed=True),
-    username: str=Body(default=None, embed=True),
     from_time_at_designation:Optional[datetime]=Body(default=None, embed=True),
     token_data: union_of_all_permission_types=Depends(is_app_staff)
     ):
@@ -25,27 +24,17 @@ async def create_superadmin(
     from_time=from_time_at_designation
     @atomic()
     async def on_board_atomically():
-        user = await UserDB.filter(username=username).values(
+        username=super_admin_data.phone_number
+        dob: datetime.date = super_admin_data.dob
+        password, hashed_password = create_password_from_dob(dob)
+        user = await UserDB.create(username=username, password=hashed_password)
+        user = await UserDB.filter(user_id=user.user_id).values(
             username="username",
             created_at="created_at",
             updated_at="updated_at",
             user_id = "user_id",
             active = "active"
         )
-        password = None
-        if len(user) == 0:
-            dob: datetime.date = super_admin_data.dob
-            password, hashed_password = create_password_from_dob(dob)
-            user = await UserDB.create(username=username, password=hashed_password)
-            user = await UserDB.filter(user_id=user.user_id).values(
-                username="username",
-                created_at="created_at",
-                updated_at="updated_at",
-                user_id = "user_id",
-                active = "active"
-            )
-        else:
-            raise HTTPException(406, "User already exists.")
 
         if await Designation.exists(user_id = user[0]["user_id"], active = True):
             raise HTTPException(406, "User already assigned to some other role or designation.")
@@ -62,12 +51,6 @@ async def create_superadmin(
         
         super_admin = await SuperAdmin.filter(id=superadmin.id).values()
         designation_data = await Designation.filter(id=designation_instance.id).values()
-        if password is None:
-            return {
-                "user": user[0],
-                "super_admin": super_admin[0],
-                "designation": designation_data[0]
-            }
         return {
                 "user": user[0],
                 "super_admin": super_admin[0],
@@ -80,7 +63,6 @@ async def create_superadmin(
 async def create_admin(
     admin_data: AdminDataTypeIn,
     designation: DesignationManager.role_designation_map["admin"]=Body(embed=True),
-    username: str=Body(embed=True),
     super_admin_id: int=Body(embed=True),
     from_time_at_designation:Optional[datetime]=Body(embed=True, default=None),
     token_data: union_of_all_permission_types=Depends(is_app_staff_or_super_admin_for_post)
@@ -90,34 +72,21 @@ async def create_admin(
         raise HTTPException(406, "This super admin does not exists")
     created_by_id = token_data.user_id
     from_time=from_time_at_designation
-
-    user = await UserDB.filter(username=username).values(
+    username = admin_data.phone_number
+    
+    @atomic()
+    async def on_board_atomically():
+        password = None
+        dob: datetime.date = admin_data.dob
+        password, hashed_password = create_password_from_dob(dob)
+        user = await UserDB.create(username=username, password=hashed_password)
+        user = await UserDB.filter(user_id=user.user_id).values(
             username="username",
             created_at="created_at",
             updated_at="updated_at",
             user_id = "user_id",
             active = "active"
         )
-    user_found = True
-    if len(user)==0:
-        user_found = False
-    else:
-        raise HTTPException(406, "User already exists.")
-    
-    @atomic()
-    async def on_board_atomically():
-        password = None
-        if not user_found:
-            dob: datetime.date = admin_data.dob
-            password, hashed_password = create_password_from_dob(dob)
-            user = await UserDB.create(username=username, password=hashed_password)
-            user = await UserDB.filter(user_id=user.user_id).values(
-                username="username",
-                created_at="created_at",
-                updated_at="updated_at",
-                user_id = "user_id",
-                active = "active"
-            )
         admin_data_dict = admin_data.dict()
         admin = await Admin.create(**admin_data_dict, created_by_id=created_by_id, user_id=user[0]["user_id"], super_admin_id=super_admin_id)
         designation_instance = await Designation.create(
@@ -130,12 +99,7 @@ async def create_admin(
 
         admin = await Admin.filter(id=admin.id).values()
         designation_data = await Designation.filter(id=designation_instance.id).values()
-        if password is None:
-            return {
-                "user": user[0],
-                "super_admin": admin[0],
-                "designation": designation_data[0]
-            }
+
         return {
                 "user": user[0],
                 "super_admin": admin[0],

@@ -1,4 +1,5 @@
 from enum import Enum
+import abc
 
 class AppStaffDesignations(str, Enum):
     sales_executive = "Sales Executive"

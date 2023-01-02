@@ -1,11 +1,20 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Dict, Optional
 from pydantic import validator
+from db_management.models import RolesEnum
+from fastapi import HTTPException
 
 class UserLoginIN(BaseModel):
-    username: str
+    username: Optional[str]=None
+    user_id: Optional[int]=None
     password: str
+
+    @validator("user_id")
+    def validate_user_input(cls, v, values):
+        if v is None and ("username" not in values or values["username"]==None):
+            raise HTTPException(422, "Both username and user_id can not be None.")
+        return v
     
 class UserCreateDataTypeIn(BaseModel):
     username: str
@@ -40,3 +49,19 @@ class DesignationDataTypeOutForAuth(BaseModel):
     role: str
     role_instance_id: int
     permissions_json: Dict = {} #This is the default. Handle in later when project grows.
+
+class UserWithRoleDataType(BaseModel):
+    role : RolesEnum
+    user_id: int
+    phone_number: str
+    name: str
+    picurl: Optional[str]=None
+    email: Optional[str]=None
+    id: int
+
+class CommonProfileData(BaseModel):
+    role: RolesEnum
+    name: str
+    email: Optional[str] = None
+    picurl: Optional[str] = None
+    id: int
