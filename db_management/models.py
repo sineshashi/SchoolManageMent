@@ -1,7 +1,7 @@
 from tortoise.models import Model
 from tortoise import fields
 
-from db_management.db_enums import EducationLevelEnum, EducationStatusEnum
+from db_management.db_enums import EducationLevelEnum, EducationStatusEnum, DayEnum
 from .custom_fields import UTCDateTimeField
 import enum
 from db_management.db_validators import validate_email, validate_phone_number
@@ -370,3 +370,29 @@ class StudentSememster(Model):
     created_at = UTCDateTimeField(null=True)
     updated_at = UTCDateTimeField(null=True)
     updated_by = fields.ForeignKeyField("models.UserDB", related_name="updated_student_semester_details", on_delete=fields.SET_NULL, null=True)
+
+class WeeklyHoliday(Model):
+    holiday_id = fields.IntField(pk=True)
+    admin = fields.ForeignKeyField("models.Admin", "weekly_holiday", fields.CASCADE, index=True, null=False)
+    semester = fields.ForeignKeyField("models.AcademicSessionAndSemester", "weekly_holiday", fields.CASCADE, index=True, null=True)
+    day = fields.IntEnumField(DayEnum, description="Day for weekly holiday.", index=True)
+    active=fields.BooleanField(default=True, index=True, null=False)
+    created_at = UTCDateTimeField(null=True)
+    updated_at = UTCDateTimeField(null=True)
+    updated_by = fields.ForeignKeyField("models.UserDB", related_name="updated_weekly_holidays", on_delete=fields.SET_NULL, null=True)
+
+class GeneralHoliday(Model):
+    holiday_id = fields.IntField(pk=True)
+    admin = fields.ForeignKeyField("models.Admin", "general_holiday", fields.CASCADE, index=True, null=False)
+    semester = fields.ForeignKeyField("models.AcademicSessionAndSemester", "general_holiday", fields.CASCADE, index=True, null=True)
+    start_date = fields.DateField(null=False, index=True)
+    end_date = fields.DateField(null=False, index=True)
+    title = fields.CharField(max_length=255)
+    description = fields.TextField(null=True)
+    non_occasion = fields.BooleanField(default=False, index=True) #Non Occasion to flag those holidays which were not planned.
+    sections = fields.ManyToManyField("models.ClassSectionSemester", related_name="holidays", on_delete=fields.CASCADE, null=True)
+    picurl = fields.TextField(null=True, source_field="picurl")
+    active = fields.BooleanField(default=True, index=True)
+    created_at = UTCDateTimeField(null=True)
+    updated_at = UTCDateTimeField(null=True)
+    updated_by = fields.ForeignKeyField("models.UserDB", related_name="updated_general_holidys", on_delete=fields.SET_NULL, null=True)

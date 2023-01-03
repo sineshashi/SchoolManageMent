@@ -4,6 +4,7 @@ import appstaff.onboarding.onboard_apis as onboarding_apis
 import institute_staff_management.ism_apis as ism_apis
 import institute_conf_management.icm_apis as icm_apis
 import student_management.stm_apis as stm_apis
+import holiday_management.hlm_apis as hlm_apis
 import auth.auth_config as authCofig
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +46,10 @@ tags_metadata = [
     {
         "name": "Student Management",
         "description": "APIs related to student crud are here."
+    },
+    {
+        "name": "Holiday Management",
+        "description": "APIs related to holidays are here."
     }
 ]
 
@@ -134,4 +139,10 @@ app.include_router(
     router=stm_apis.router,
     prefix="/stm",
     tags=["Student Management"]
+)
+
+app.include_router(
+    router=hlm_apis.router,
+    prefix="/hlm",
+    tags=["Holiday Management"]
 )

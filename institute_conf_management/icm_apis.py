@@ -594,6 +594,13 @@ async def add_new_class_section(
     data["admin_id"]=admin_id
     data["school_class_id"]=school_class_id
     data["updated_by_id"]=token_data.user_id
+    if await ClassSectionSemester.exists(
+        school_class_id=school_class_id,
+        section_name=section_data.section_name,
+        active=True,
+        semester_id=section_data.semester_id
+        ):
+        raise HTTPException(409, "Section Already Exists.")
     @atomic()
     async def do():
         createdobj = await ClassSectionSemester.create(**data)
