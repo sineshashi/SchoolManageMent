@@ -44,6 +44,13 @@ class AbstractHolidayTable(metaclass=abc.ABCMeta):
     async def discard(cls, holiday_id: int, admin_id: int) -> Dict[str, bool]:
         ...
 
+    @classmethod
+    @abc.abstractmethod
+    async def all(
+        cls: "AbstractHolidayTable", admin_id: int, semester_id: int
+    ) -> "List[AbstractHolidayTable]":
+        ...
+
 
 class WeeklyHolidayTable:
     _model = WeeklyHoliday

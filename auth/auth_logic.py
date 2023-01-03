@@ -26,7 +26,8 @@ class AbstractRoleAuthTable(metaclass=abc.ABCMeta):
     _model = Model
     _role = RolesEnum.admin  # SomeRole.
 
-    @abc.abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     async def filter_data_for_users_login(cls: "AbstractRoleAuthTable", ids: List[int]) -> List[CommonProfileData]:
         ...
 
@@ -205,7 +206,8 @@ class UserTable:
         all_designations = await Designation.filter(
             user__username=phone_number, user__active=True, role=role).prefetch_related("user")
 
-        role_ids = {x.role_instance_id: x.user.user_id for x in all_designations}
+        role_ids = {
+            x.role_instance_id: x.user.user_id for x in all_designations}
         users = await RoleMapATableAuthTable.fetch_all_existing_profiles_for_given_ids_and_role(
             ids=list(role_ids.keys()), role=role
         )
@@ -243,4 +245,3 @@ class UserTable:
             await user.save()
             return True
         return False
-        

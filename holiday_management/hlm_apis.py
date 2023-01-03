@@ -144,6 +144,7 @@ async def update_holiday_weekly_holiday(
     )
     return WeeklyHolidayDataTypeOut.parse_obj(holiday.dict())
 
+
 @router.put("/updateAnnualHoliday", response_model=AnnualHolidayDataTypeOut)
 async def update_holiday_annual_holiday(
     holiday_id: int = Body(embed=True),
@@ -164,6 +165,7 @@ async def update_holiday_annual_holiday(
         picurl=picurl
     )
     return AnnualHolidayDataTypeOut.parse_obj(holiday.dict())
+
 
 @router.put("/updateOtherHoliday", response_model=IrregualHolidayDataTypeOutForSection)
 async def update_holiday_other_holiday(
@@ -189,12 +191,13 @@ async def update_holiday_other_holiday(
     )
     return IrregualHolidayDataTypeOutForSection.parse_obj(holiday.dict())
 
+
 @router.put("/addNewSectionsToOtherHoliday", response_model=IrregualHolidayDataTypeOut)
 async def add_new_sections_to_other_holiday(
     holiday_id: int = Body(embed=True),
     admin_id: int = Body(embed=True),
     semester_id: int = Body(embed=True),
-    section_ids: List[int]=Body(default=[], embed=True),
+    section_ids: List[int] = Body(default=[], embed=True),
     token_data: union_of_all_permission_types = Depends(can_add_holiday)
 ):
     holiday = await AdminHolidayManager(
@@ -202,18 +205,20 @@ async def add_new_sections_to_other_holiday(
     ).add_sections_to_irregular_holiday(holiday_id=holiday_id, section_ids=section_ids)
     return IrregualHolidayDataTypeOut.parse_obj(holiday.dict())
 
+
 @router.put("/removeSectionsFromOtherHoliday", response_model=IrregualHolidayDataTypeOut)
 async def remove_sections_from_other_holiday(
     holiday_id: int = Body(embed=True),
     admin_id: int = Body(embed=True),
     semester_id: int = Body(embed=True),
-    section_ids: List[int]=Body(default=[], embed=True),
+    section_ids: List[int] = Body(default=[], embed=True),
     token_data: union_of_all_permission_types = Depends(can_add_holiday)
 ):
     holiday = await AdminHolidayManager(
         admin_id, semester_id
     ).remove_sections_from_irregular_holiday(holiday_id=holiday_id, section_ids=section_ids)
     return IrregualHolidayDataTypeOut.parse_obj(holiday.dict())
+
 
 @router.delete("/discardAnnualHoliday", response_model=SuccessReponse)
 async def discard_annual_holiday(
@@ -227,6 +232,7 @@ async def discard_annual_holiday(
         holiday_id=holiday_id
     )
 
+
 @router.delete("/discardOtherHoliday", response_model=SuccessReponse)
 async def discard_other_holiday(
     holiday_id: int = Body(embed=True),
@@ -238,6 +244,7 @@ async def discard_other_holiday(
         holiday_type=HolidayTypes.irregular_holiday_table,
         holiday_id=holiday_id
     )
+
 
 @router.delete("/discardWeeklyHoliday", response_model=SuccessReponse)
 async def discard_weekly_holiday(
