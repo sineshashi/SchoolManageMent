@@ -1,5 +1,4 @@
-from http.client import HTTPException
-from typing import Optional
+from fastapi import HTTPException
 from fastapi_jwt_auth import AuthJWT
 from fastapi import Depends
 from fastapi import Body

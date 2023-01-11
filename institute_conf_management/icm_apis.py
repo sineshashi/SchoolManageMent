@@ -1,4 +1,4 @@
-from db_management.models import RolesEnum, Designation, SubjectGroupDepartment, Subject, SectionSubject, Class, ClassGroupDepartment, ClassSectionSemester, AcademicSessionAndSemester
+from db_management.models import AcademicSession, RolesEnum, Designation, SubjectGroupDepartment, Subject, SectionSubject, Class, ClassGroupDepartment, ClassSectionSemester, AcademicSessionAndSemester
 from fastapi import APIRouter
 from permission_management.icm_permissions import can_create_section,can_view_section,can_create_academic_session, can_view_academic_session, can_create_class, can_view_class, can_view_subject, can_create_class_group, can_view_class_group, can_view_subject, can_create_subject, can_create_subject_group_department, can_view_subject_group_department
 from .icm_datatypes import SectionGetDataType, SubjectAdditionDataType, SubjectAdditionOutDataType,ClassSectionSemeseterDataType, ClassSectionSemesterOutDataType,ClassUpdateDataType, AcademicSessionAndSemesterDataTypeInDB, AcademicSessionSemesterDataType, SubjectGroupDepartMentDataType, SubjectDataType, ClassGroupDataType, ClassDataType
@@ -550,9 +550,68 @@ async def add_new_academic_session_and_semester(
     data = session_data.dict()
     data["admin_id"] = admin_id
     data["updated_by_id"] = token_data.user_id
-    createdobj = await AcademicSessionAndSemester.create(**data)
-    return await AcademicSessionAndSemester.get(semester_id=createdobj.semester_id)
+    data1 = {**data}
+    del data1["semester_start_date"]
+    del data1["semester_end_data"]
+    del data1["semester_number"]
+    del data["academic_session_start_year"]
+    del data["academic_session_end_year"]
+    @atomic()
+    async def do():
+        session_obj = await AcademicSession.create(**data1)
+        semesterobj = await AcademicSessionAndSemester.create(**data, session_id=session_obj.session_id)
+        return {
+            "session_details": {
+                "session_id": session_obj.session_id,
+                "academic_session_start_year": session_obj.academic_session_start_year,
+                "academic_session_end_year": session_obj.academic_session_end_year,
+                "current": session_obj.current
+            },
+            "semester_details": {
+                "semester_id": semesterobj.semester_id,
+                "semester_number": semesterobj.semester_number,
+                "semester_start_date": semesterobj.semester_start_date,
+                "semester_end_date": semesterobj.semester_end_date,
+                "current": semesterobj.current
+            }
+        }
+    return await do()
 
+import datetime
+from typing import Optional
+
+@icm_router.post("/createNewSemester")
+async def create_new_semester(
+    session_id: int=Body(embed=True),
+    admin_id: int=Body(embed=True),
+    semester_number: int=Body(embed=True),
+    semster_start_date: Optional[datetime.datetime]=Body(embed=True, default=None),
+    semester_end_date: Optional[datetime.datetime]=Body(embed=True, default=None),
+    token_data: union_of_all_permission_types=Depends(can_create_academic_session)
+):
+    @atomic()
+    async def do():
+        await AcademicSessionAndSemester.filter(
+            session_id=session_id, admin_id=admin_id).update(
+                current=False,
+                updated_by_id=token_data.user_id
+            )
+        semesterobj = await AcademicSessionAndSemester.create(
+            session_id=session_id,
+            admin_id=admin_id,
+            semester_end_date=semester_end_date,
+            semester_number=semester_number,
+            semster_start_date=semster_start_date,
+            current=True
+        )
+        return {
+            "semester_id": semesterobj.semester_id,
+            "semester_number": semesterobj.semester_number,
+            "semester_start_date": semesterobj.semester_start_date,
+            "semester_end_date": semesterobj.semester_end_date,
+            "current": semesterobj.current
+        }
+    return await do()
 
 @icm_router.get("/listAllAcademicSessionsOfInstitute")
 async def list_all_academic_sessions_of_the_institute(
@@ -565,22 +624,35 @@ async def list_all_academic_sessions_of_the_institute(
 
 @icm_router.get("/getAcademicSession")
 async def get_academic_session(
-    semester_id: int,
+    session_id: int,
     admin_id: int,
     token_data: union_of_all_permission_types = Depends(
         can_view_academic_session)
 ):
-    return await AcademicSessionAndSemester.get(semester_id=semester_id, admin_id=admin_id).values()
-
+    session_obj = await AcademicSession.get(
+        session_id=session_id, admin_id=admin_id, active=True).prefetch_related("semesters")
+    semesters = await session_obj.semester.filter(active=True).values()
+    return {
+        "session": {
+                "session_id": session_obj.session_id,
+                "academic_session_start_year": session_obj.academic_session_start_year,
+                "academic_session_end_year": session_obj.academic_session_end_year,
+                "current": session_obj.current
+            },
+        "semesters": semesters
+    }
 
 @icm_router.delete("/disableAcademicSession")
 async def disable_academic_session(
-    semester_id: int = Body(embed=True),
+    session_id: int = Body(embed=True),
     admin_id: int = Body(embed=True),
     token_data: union_of_all_permission_types = Depends(
         can_create_academic_session)
 ):
-    await AcademicSessionAndSemester.filter(semester_id=semester_id, admin_id=admin_id).update(active=False, updated_by_id=token_data.user_id)
+    await AcademicSession.filter(session_id=session_id, admin_id=admin_id).update(
+        active=False, updated_by_id=token_data.user_id)
+    await AcademicSessionAndSemester.filter(session_id=session_id, admin_id=admin_id).update(
+        active=False, updated_by_id=token_data.user_id)
     return {"success": True}
 
 @icm_router.post("/addNewClassSection", response_model=ClassSectionSemesterOutDataType)

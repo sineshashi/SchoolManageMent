@@ -33,3 +33,37 @@ class DayEnum(int, Enum):
     friday = 4
     saturday = 5
     sunday = 6
+
+class LeaveTypeEnum(str, Enum):
+    causal = "causal"
+    optional_holiday = "optional_holiday"
+    sick_leave = "sick_leave"
+    unpaid_leave = "unpaid_leave"
+    paternity_leave = "paternity_leave"
+    maternaity_leave = "maternity_leave"
+    privilege_leave = "privilege"
+
+class LeaveStatusEnum(str, Enum):
+    approved="Approved"
+    pending="Pending"
+    rejected="Rejected"
+
+class MeetingEnum(int, Enum):
+    first = 0
+    second = 1
+
+class StaffLeaveApproverTypeEnum(str, Enum):
+    principal = "Principal"
+    managing_director = "Managing Director"
+
+class StudentLeaveApproverTypeEnum(str, Enum):
+    class_teacher = "Class Teacher"
+    vice_class_teacher = "Vice Class Teacher"
+    principal = "Principal"
+    managing_director = "Managing Director"
+
+class ApproverTypeEnum(str, Enum):
+    class_teacher = "Class Teacher"
+    vice_class_teacher = "Vice Class Teacher"
+    principal = "Principal"
+    managing_director = "Managing Director"

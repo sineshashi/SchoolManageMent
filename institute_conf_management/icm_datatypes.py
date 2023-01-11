@@ -41,7 +41,6 @@ class AcademicSessionSemesterDataType(BaseModel):
     '''
     academic_session_start_year: int
     academic_session_end_year: int
-    academic_session_start_date: Optional[datetime.date] = None
     semester_number: Optional[int] = 0
     semester_start_date: Optional[datetime.date] = None
     semester_end_date: Optional[datetime.date] = None
@@ -58,7 +57,8 @@ class AcademicSessionSemesterDataType(BaseModel):
             'semester_number' not in values or values['semester_number'] == 0 or 'semester_start_date' not in values or values['semester_start_date'] is None))
         return v
 
-AcademicSessionAndSemesterDataTypeInDB = pydantic_model_creator(AcademicSessionAndSemester)
+class AcademicSessionAndSemesterDataTypeInDB(BaseModel):
+    ...
 
 class ClassSectionSemeseterDataType(BaseModel):
     semester_id: Optional[int]=None
