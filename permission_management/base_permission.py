@@ -163,6 +163,10 @@ def is_super_admin(permission_data: union_of_all_permission_types):
 def is_admin(permission_data: union_of_all_permission_types):
     return permission_data.role == "admin"
 
+@PermissionManager.validate()
+def is_authenticated(permission_data: union_of_all_permission_types):
+    return permission_data
+
 
 def is_app_staff_or_super_admin(super_admin_id: int, Authorize: AuthJWT = Depends()):
     permission_data: union_of_all_permission_types = PermissionManager.validate_token_and_return_token_data(

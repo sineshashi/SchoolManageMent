@@ -552,7 +552,7 @@ async def add_new_academic_session_and_semester(
     data["updated_by_id"] = token_data.user_id
     data1 = {**data}
     del data1["semester_start_date"]
-    del data1["semester_end_data"]
+    del data1["semester_end_date"]
     del data1["semester_number"]
     del data["academic_session_start_year"]
     del data["academic_session_end_year"]

@@ -1,11 +1,3 @@
-import appstaff.appstaff_management.asm_apis as asm_apis
-import auth.auth_apis as auth_apis
-import appstaff.onboarding.onboard_apis as onboarding_apis
-import institute_staff_management.ism_apis as ism_apis
-import institute_conf_management.icm_apis as icm_apis
-import student_management.stm_apis as stm_apis
-import holiday_management.hlm_apis as hlm_apis
-import auth.auth_config as authCofig
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
@@ -14,6 +6,17 @@ from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
 from tortoise import generate_config
 from tortoise.contrib.fastapi import register_tortoise
+
+
+import appstaff.appstaff_management.asm_apis as asm_apis
+import auth.auth_apis as auth_apis
+import appstaff.onboarding.onboard_apis as onboarding_apis
+import institute_staff_management.ism_apis as ism_apis
+import institute_conf_management.icm_apis as icm_apis
+import student_management.stm_apis as stm_apis
+import holiday_management.hlm_apis as hlm_apis
+import auth.auth_config as authCofig
+import leave_management.lvm_api as lvm_apis
 
 from project.config import CORS_CONFIG, DBURL, DOCS_ENABLED
 
@@ -50,6 +53,10 @@ tags_metadata = [
     {
         "name": "Holiday Management",
         "description": "APIs related to holidays are here."
+    },
+    {
+        "name": "Leave Management",
+        "description": "APIs related to leave management are documented here."
     }
 ]
 
@@ -145,4 +152,10 @@ app.include_router(
     router=hlm_apis.router,
     prefix="/hlm",
     tags=["Holiday Management"]
+)
+
+app.include_router(
+    router=lvm_apis.router,
+    prefix="/lvm",
+    tags=["Leave Management"]
 )

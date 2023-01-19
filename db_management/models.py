@@ -554,7 +554,7 @@ class LeaveDetail(Model):
     authorizer = fields.CharEnumField(
         ApproverTypeEnum, max_length=25, index=True)
     reacted_by = fields.CharEnumField(
-        ApproverTypeEnum, max_length=25, index=True)
+        ApproverTypeEnum, max_length=25, index=True, null=True)
     reacted_at = UTCDateTimeField(null=True)
     active = fields.BooleanField(null=False, default=True)
     created_at = UTCDateTimeField(null=True, index=True)
@@ -585,8 +585,6 @@ class InstituteStaffLeaveDetail(Model):
         "models.LeaveDetail", "staff_leave", index=True, null=False)
     staff = fields.ForeignKeyField(
         "models.InstituteStaff", "leaves", null=False, index=True)
-    class_group = fields.ForeignKeyField(
-        "models.ClassGroupDepartment", "staff_leaves", null=False, index=True)
     admin = fields.ForeignKeyField(
         "models.Admin", "staff_leaves", fields.CASCADE, index=True)
     session = fields.ForeignKeyField(

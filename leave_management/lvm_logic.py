@@ -2,11 +2,11 @@ from db_management.db_enums import (LeaveTypeEnum, LeaveStatusEnum, MeetingEnum,
                                     StaffLeaveApproverTypeEnum, StudentLeaveApproverTypeEnum)
 from fastapi import HTTPException
 from typing import List, Optional, Dict
-from db_management.models import (AdminLeaveConfig,
-                                LeaveDetail, Meeting, StudentLeaveDetail, InstituteStaffLeaveDetail)
+from db_management.models import (AdminLeaveConfig, StudentSememster,
+                                  LeaveDetail, Meeting, StudentLeaveDetail, InstituteStaffLeaveDetail)
 import datetime
-from .lvm_datatype import (StaffLeaveType, StudentLeaveType, LeaveDataTypeOut, ClassGroupDataTypeForLeave,
-                            StaffDataTypeForLeave, SectionDataTypeForLeave, StudentDataTypeForLeave)
+from .lvm_datatype import (StaffLeaveType, StudentLeaveType, LeaveDataTypeOut,
+                           StaffDataTypeForLeave, SectionDataTypeForLeave, StudentDataTypeForLeave)
 from tortoise.transactions import atomic
 import pytz
 from tortoise.queryset import QuerySet, ValuesQuery
@@ -54,16 +54,19 @@ class AdminLeaveConfigTable:
         student_leaves: List[StudentLeaveType] = [],
         **kwargs
     ) -> "AdminLeaveConfigTable":
-        createdobj, _ = await cls._model.update_or_create(
-            admin_id=admin_id,
-            session_id=session_id,
-            defaults={
-                "staff_leaves":[leave.dict() for leave in staff_leaves],
-                "student_leaves":[leave.dict() for leave in student_leaves],
-                **kwargs
-            }
-        )
-        return cls(id=createdobj.id, staff_leaves=staff_leaves, student_leaves=student_leaves)
+        try:
+            createdobj, _ = await cls._model.update_or_create(
+                admin_id=admin_id,
+                session_id=session_id,
+                defaults={
+                    "staff_leaves": [leave.dict() for leave in staff_leaves],
+                    "student_leaves": [leave.dict() for leave in student_leaves],
+                    **kwargs
+                }
+            )
+            return cls(id=createdobj.id, staff_leaves=staff_leaves, student_leaves=student_leaves)
+        except:
+            raise HTTPException(405, "admin_id or session_id is not correct.")
 
     @classmethod
     async def update(cls: "AdminLeaveConfigTable", query_params: Dict, **kwargs) -> "AdminLeaveConfigTable":
@@ -78,8 +81,8 @@ class LeaveTime:
         self,
         date: datetime.date,
         meeting: MeetingEnum,
-        orm_obj:Optional[Meeting]=None,
-        id: Optional[int]=None,
+        orm_obj: Optional[Meeting] = None,
+        id: Optional[int] = None,
         **kwargs
     ):
         self.date = date
@@ -110,19 +113,21 @@ class LeaveTime:
 
     def dict(self):
         return {"date": self.date, "meeting": self.meeting}
-        
+
     @classmethod
     async def from_orm_instance(
         cls: "LeaveTime",
         obj: "Meeting"
-    )->"LeaveTime":
-        return cls(**obj.__dict__, orm_obj=obj)
+    ) -> "LeaveTime":
+        leavetime_obj = LeaveTime(**obj.__dict__)
+        leavetime_obj.orm_obj = obj
+        return leavetime_obj
 
     @classmethod
     async def _create(
         cls: "LeaveTime",
         **kwargs
-    )->"LeaveTable":
+    ) -> "LeaveTable":
         return await cls._model.create(**kwargs)
 
     @classmethod
@@ -130,7 +135,7 @@ class LeaveTime:
         cls: "LeaveTime",
         date: datetime.datetime,
         meeting: MeetingEnum
-    )->"LeaveTime":
+    ) -> "LeaveTime":
         orm_obj = await cls._create(date=date, meeting=meeting)
         return await cls.from_orm_instance(orm_obj)
 
@@ -142,7 +147,7 @@ class LeaveTime:
     ):
         await cls._model.filter(id=id).update(**kwargs)
 
-    async def save(self)->"LeaveTime":
+    async def save(self) -> "LeaveTime":
         if self.id is None:
             return await LeaveTime.create(**self.dict())
         await LeaveTime.update(id=self.id, **self.dict())
@@ -155,23 +160,23 @@ class LeaveTable:
     def __init__(
         self,
         leave_type: LeaveTypeEnum,
-        leave_status: LeaveStatusEnum,
         leave_start: LeaveTime,
         leave_end: LeaveTime,
         authorizer: ApproverTypeEnum,
+        leave_status: LeaveStatusEnum=LeaveStatusEnum.pending,
         reacted_by: Optional[ApproverTypeEnum] = None,
         created_at: Optional[datetime.datetime] = None,
         updated_at: Optional[datetime.datetime] = None,
         reacted_at: Optional[datetime.datetime] = None,
         description: Optional[str] = None,
-        leave_id: Optional[int]=None,
-        orm_obj: Optional[LeaveDetail]=None,
-        docurl: Optional[str]=None,
+        leave_id: Optional[int] = None,
+        orm_obj: Optional[LeaveDetail] = None,
+        docurl: Optional[str] = None,
         **kwargs
     ):
-        if self.leave_to < self.leave_from:
+        if leave_end < leave_start:
             raise HTTPException(
-                422, "leave_from must be less than or equal leave_to.")
+                422, "leave_start must be less than or equal leave_end.")
         self.leave_id = leave_id
         self.leave_type = leave_type
         self.leave_status = leave_status
@@ -189,10 +194,11 @@ class LeaveTable:
     @property
     def leave_count(self) -> float:
         '''Count of leaves between given dates.'''
-        return self.leave_to - self.leave_from
+        return self.leave_end - self.leave_start
 
     def dict(self) -> Dict:
         return {
+            "leave_id": self.leave_id,
             "leave_type": self.leave_type,
             "leave_status": self.leave_status,
             "leave_start": self.leave_start.dict(),
@@ -203,26 +209,27 @@ class LeaveTable:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "description": self.description,
-            "authorizer": self.authorizer
+            "authorizer": self.authorizer,
+            "docurl": self.docurl
         }
 
     @classmethod
     async def from_orm_instance(
         cls: "LeaveTable",
         obj: "LeaveDetail"
-    )->"LeaveTable":
+    ) -> "LeaveTable":
         return cls(
             **obj.__dict__,
-            leave_start = await LeaveTime.from_orm_instance(await obj.leave_start),
-            leave_end = await LeaveTime.from_orm_instance(await obj.leave_end),
-            orm_obj = obj
+            leave_start=await LeaveTime.from_orm_instance(await obj.leave_start),
+            leave_end=await LeaveTime.from_orm_instance(await obj.leave_end),
+            orm_obj=obj
         )
 
     @classmethod
     async def _get_model(
         cls: "LeaveTable",
         **kwargs
-    )->"LeaveDetail":
+    ) -> "LeaveDetail":
         return await cls._model.get(**kwargs).prefetch_related("leave_start", "leave_end")
 
     @classmethod
@@ -243,20 +250,22 @@ class LeaveTable:
         authorizer: ApproverTypeEnum,
         description: str,
         docurl: str,
-        updated_by_id: int
-    )->"LeaveTable":
+        updated_by_id: int,
+        leave_status: LeaveStatusEnum=LeaveStatusEnum.pending
+    ) -> "LeaveTable":
         @atomic()
         async def do():
             leave_start_obj = await leave_start.save()
             leave_end_obj = await leave_end.save()
             obj = await cls._create(
                 leave_start=leave_start_obj.orm_obj,
-                leave_end = leave_end_obj.orm_obj,
+                leave_end=leave_end_obj.orm_obj,
                 leave_type=leave_type,
                 authorizer=authorizer,
                 description=description,
                 docurl=docurl,
-                updated_by_id=updated_by_id
+                updated_by_id=updated_by_id,
+                leave_status = leave_status
             )
             return await LeaveTable.from_orm_instance(obj)
         return await do()
@@ -264,9 +273,9 @@ class LeaveTable:
     @classmethod
     async def update(
         cls: "LeaveTable",
-        query_params : Dict={},
+        query_params: Dict = {},
         **kwargs
-    )->None:
+    ) -> None:
         await cls._model.filter(**query_params).update(**kwargs)
 
     @classmethod
@@ -276,18 +285,19 @@ class LeaveTable:
         leave_start: LeaveTime,
         leave_end: LeaveTime,
         updated_by_id: int,
-    )->"LeaveTable":
+    ) -> "LeaveTable":
         if leave_start > leave_end:
             raise HTTPException(422, "Leave dates are not ok.")
+
         @atomic()
         async def do():
             obj = await cls.get(leave_id=leave_id, active=True)
-            obj.leave_start.date=leave_start.date
+            obj.leave_start.date = leave_start.date
             obj.leave_end.date = leave_end.date
             obj.leave_start.meeting = leave_start.meeting
             obj.leave_end.meeting = leave_end.meeting
-            obj.leave_start=await obj.leave_start.save()
-            obj.leave_end=await obj.leave_end.save()
+            obj.leave_start = await obj.leave_start.save()
+            obj.leave_end = await obj.leave_end.save()
             await cls.update(query_params={"leave_id": leave_id}, updated_by_id=updated_by_id)
             return obj
         return await do()
@@ -296,15 +306,16 @@ class LeaveTable:
     async def _filter(
         cls: "LeaveTable",
         **kwargs
-    )->QuerySet:
+    ) -> QuerySet:
         return await cls._model.filter(**kwargs).prefetch_related("leave_start", "leave_end")
 
     @classmethod
     async def filter(
         cls: "LeaveTable",
         **kwargs
-    )->List["LeaveTable"]:
+    ) -> List["LeaveTable"]:
         return [cls.from_orm_instance(obj) for obj in await cls._filter(**kwargs)]
+
 
 class StudentLeaveTable:
     _model = StudentLeaveDetail
@@ -314,9 +325,9 @@ class StudentLeaveTable:
         leave: LeaveTable,
         admin_id: int,
         session_id: int,
-        student: Optional[SectionDataTypeForLeave]=None,
-        section: Optional[StudentDataTypeForLeave]=None,
-        orm_obj: Optional[StudentLeaveDetail]=None,
+        student: Optional[SectionDataTypeForLeave] = None,
+        section: Optional[StudentDataTypeForLeave] = None,
+        orm_obj: Optional[StudentLeaveDetail] = None,
         **kwargs
     ):
         self.leave = leave
@@ -325,7 +336,6 @@ class StudentLeaveTable:
         self.student = student
         self.section = section
         self.orm_obj = orm_obj
-        
 
     def dict(self) -> Dict:
         return {
@@ -335,16 +345,17 @@ class StudentLeaveTable:
             "student": self.student.dict() if self.student is not None else None,
             "section": self.section.dict() if self.section is not None else None
         }
+
     @classmethod
     async def from_orm_instance(
         cls: "StudentLeaveTable",
         obj: StudentLeaveDetail,
-        nested: List[str]=[]
-    )->"StudentLeaveTable":
+        nested: List[str] = []
+    ) -> "StudentLeaveTable":
         cntobj = StudentLeaveTable(
-            leave=LeaveTable.from_orm_instance(await obj.leave),
+            leave=await LeaveTable.from_orm_instance(await obj.leave),
             **obj.__dict__,
-            orm_obj = obj
+            orm_obj=obj
         )
         if "student" in nested:
             student_orm_obj = await obj.student
@@ -365,16 +376,16 @@ class StudentLeaveTable:
     @classmethod
     async def _get(
         cls: "StudentLeaveTable",
-        nested: List[str]=[],
+        nested: List[str] = [],
         **kwargs
-    )->"StudentLeaveDetail":
+    ) -> "StudentLeaveDetail":
         '''nested will be used for prefetching given fields.'''
         return await cls._model.get(**kwargs).prefetch_related(*nested, "leave")
 
     @classmethod
     async def get(
         cls: "StudentLeaveTable",
-        nested: List[str]=[],
+        nested: List[str] = [],
         **kwargs
     ) -> "StudentLeaveTable":
         obj = await cls._get(nested, **kwargs)
@@ -384,8 +395,8 @@ class StudentLeaveTable:
     async def _create(
         cls: "StudentLeaveTable",
         **kwargs
-    )->"StudentLeaveDetail":
-        return cls._model.create(**kwargs)
+    ) -> "StudentLeaveDetail":
+        return await cls._model.create(**kwargs)
 
     @classmethod
     async def apply(
@@ -394,15 +405,20 @@ class StudentLeaveTable:
         leave_data: LeaveTable,
         updated_by_id: int,
         admin_id: int,
-        session_id: int,
-        section_id: int
-    )->"StudentLeaveTable":
+        session_id: int
+    ) -> "StudentLeaveTable":
         @atomic()
         async def do():
+            student_academic_details = await StudentSememster.get(
+                student_id=student_id,
+                admin_id=admin_id,
+                section__semester__session_id=session_id
+            ).values(section_id="section_id")
+            section_id = student_academic_details["section_id"]
             leave_obj = await LeaveTable.create(
                 leave_start=leave_data.leave_start,
                 leave_end=leave_data.leave_end,
-                leave_type=leave_data.leave_start,
+                leave_type=leave_data.leave_type,
                 authorizer=leave_data.authorizer,
                 description=leave_data.description,
                 docurl=leave_data.docurl,
@@ -413,9 +429,9 @@ class StudentLeaveTable:
                 admin_id=admin_id,
                 student_id=student_id,
                 section_id=section_id,
-                leave=leave_obj
+                leave_id=leave_obj.leave_id
             )
-            return cls.from_orm_instance(obj=student_leave_obj)
+            return await cls.from_orm_instance(obj=student_leave_obj)
         return await do()
 
     @classmethod
@@ -423,20 +439,23 @@ class StudentLeaveTable:
         cls: "StudentLeaveTable",
         query_params: Dict = {},
         value_params: Dict = {},
-    )->ValuesQuery:
+    ) -> ValuesQuery:
         return await cls._model.filter(**query_params).values(**value_params)
 
     @classmethod
     async def _from_single_valuesquery(
         cls: "StudentLeaveTable",
         values: Dict,
-        nested: List[str]=[]
-    )->"StudentLeaveTable":
-        leave_start = LeaveTime(values["leave_start_date"], values["leave_start_meeting"])
-        leave_end = LeaveTime(values["leave_end_date"], values["leave_end_meeting"])
-        leave_obj = LeaveTable(**values, leave_end=leave_end, leave_start=leave_start)
+        nested: List[str] = []
+    ) -> "StudentLeaveTable":
+        leave_start = LeaveTime(
+            values["leave_start_date"], values["leave_start_meeting"])
+        leave_end = LeaveTime(
+            values["leave_end_date"], values["leave_end_meeting"])
+        leave_obj = LeaveTable(
+            **values, leave_end=leave_end, leave_start=leave_start)
 
-        student_obj=None
+        student_obj = None
         if "student" in nested:
             student_obj = StudentDataTypeForLeave(
                 student_id=values["student_id"],
@@ -446,7 +465,7 @@ class StudentLeaveTable:
                 picurl=values["student_picurl"]
             )
 
-        section_obj=None
+        section_obj = None
         if "section" in nested:
             section_obj = SectionDataTypeForLeave(
                 section_id=values["section_id"],
@@ -465,10 +484,10 @@ class StudentLeaveTable:
     @classmethod
     async def filter(
         cls: "StudentLeaveTable",
-        nested: List[str]=[],
+        nested: List[str] = [],
         **kwargs
-    )->List[LeaveDataTypeOut]:
-        value_params = {
+    ) -> List["StudentLeaveTable"]:
+        values_params = {
             "admin_id": "admin_id",
             "session_id": "session_id",
             "leave_id": "leave_id",
@@ -477,7 +496,7 @@ class StudentLeaveTable:
             "leave_end_date": "leave__leave_end__date",
             "leave_end_meeting": "leave__leave_end__meeting",
             "leave_type": "leave__leave_type",
-            "leave_status": "leave__status",
+            "leave_status": "leave__leave_status",
             "authorizer": "leave__authorizer",
             "reacted_by": "leave__reacted_by",
             "docurl": "leave__docurl",
@@ -486,26 +505,26 @@ class StudentLeaveTable:
             "updated_at": "leave__updated_at"
         }
         if "student" in nested:
-            value_params={
-                **value_params,
+            values_params = {
+                **values_params,
                 "student_id": "student_id",
                 "student_first_name": "student__first_name",
                 "student_middle_name": "student__middle_name",
                 "student_last_name": "student__last_name",
-                "student_picurl": "student__picurl"
+                "student_picurl": "student__pic_url"
             }
         if "section" in nested:
-            values_params={
-                **value_params,
+            values_params = {
+                **values_params,
                 "section_id": "section_id",
-                "class_name": "section__class_name",
+                "class_name": "section__school_class__class_name",
                 "school_class_id": "section__school_class_id",
                 "section_name": "section__section_name"
             }
 
         values_query = await cls._filter(query_params=kwargs, value_params=values_params)
         return [
-            await cls._from_single_valuesquery(vq)
+            await cls._from_single_valuesquery(vq, nested=nested)
             for vq in values_query
         ]
 
@@ -515,23 +534,23 @@ class StudentLeaveTable:
         leave_id: int,
         approver_type: StudentLeaveApproverTypeEnum,
         updated_by_id: int,
-        section_id: Optional[int]=None,
-        approve: bool=True
-    )->"StudentLeaveTable":
+        section_id: Optional[int] = None,
+        approve: bool = True
+    ) -> "StudentLeaveTable":
         '''Approve or reject the leave.'''
         query_params = {
             "leave_id": leave_id,
-            "authorizer": approver_type,
+            "leave__authorizer": approver_type,
             "leave__active": True,
             "leave__leave_status": LeaveStatusEnum.pending,
         }
         if section_id is not None:
-            query_params["section_id"]=section_id
+            query_params["section_id"] = section_id
 
         studentleave = await cls.get(nested=[], **query_params)
         studentleave.leave.leave_status = LeaveStatusEnum.approved if approve else LeaveStatusEnum.rejected
         await LeaveTable.update(
-            query_params=query_params,
+            query_params={"leave_id": studentleave.leave.leave_id},
             **{
                 "leave_status": studentleave.leave.leave_status,
                 "updated_by_id": updated_by_id,
@@ -539,6 +558,7 @@ class StudentLeaveTable:
             }
         )
         return studentleave
+
 
 class StaffLeaveTable:
     _model = InstituteStaffLeaveDetail
@@ -548,22 +568,19 @@ class StaffLeaveTable:
         leave: LeaveTable,
         admin_id: int,
         session_id: int,
-        class_group: Optional[ClassGroupDataTypeForLeave]=None,
-        staff: Optional[StaffDataTypeForLeave]=None,
+        staff: Optional[StaffDataTypeForLeave] = None,
         **kwargs
     ):
         self.leave = leave
         self.admin_id = admin_id
         self.session_id = session_id
-        self.class_group = class_group,
         self.staff = staff
-    
-    def dict(self)->Dict:
+
+    def dict(self) -> Dict:
         return {
             "leave": self.leave.dict(),
             "admin_id": self.admin_id,
             "session_id": self.session_id,
-            "class_group": self.class_group.dict() if self.class_group is not None else None,
             "staff": self.staff.dict() if self.staff is not None else None
         }
 
@@ -571,63 +588,54 @@ class StaffLeaveTable:
     async def from_orm_instance(
         cls: "StaffLeaveTable",
         obj: "InstituteStaffLeaveDetail",
-        nested: List[str] = None
+        nested: List[str] = []
     ) -> "StaffLeaveTable":
         leaveobj = await LeaveTable.from_orm_instance(await obj.leave)
 
         staffobj = None
         if "staff" in nested:
             staff_orm_obj = await obj.staff
-            staffobj=StaffDataTypeForLeave(
+            staffobj = StaffDataTypeForLeave(
                 staff_id=staff_orm_obj.staff_id,
                 name=staff_orm_obj.name,
                 pic_url=staff_orm_obj.pic_url
             )
-        
-        class_group = None
-        if "class_group" in nested:
-            class_group_orm_obj = await obj.class_group
-            class_group = ClassGroupDataTypeForLeave(
-                group_id=class_group_orm_obj.group_id,
-                group_name=class_group_orm_obj.group_name
-            )
+
         return StaffLeaveTable(
             leave=leaveobj,
             staff=staffobj,
-            class_group=class_group,
             **obj.__dict__
         )
-    
+
     @classmethod
     async def _get(
         cls: "StaffLeaveTable",
-        nested: List[str]=[],
+        nested: List[str] = [],
         **kwargs
-    )->InstituteStaffLeaveDetail:
-        return await cls._model.get(**kwargs).prefetch_related('leave', **nested)
-    
+    ) -> InstituteStaffLeaveDetail:
+        return await cls._model.get(**kwargs).prefetch_related('leave', *nested)
+
     @classmethod
     async def get(
         cls: "StaffLeaveTable",
-        nested: List=[],
+        nested: List = [],
         **kwargs
     ):
         ormobj = await cls._get(nested, **kwargs)
         return await cls.from_orm_instance(ormobj, nested)
-    
+
     @classmethod
     async def _create(
         cls: "StaffLeaveTable",
         **kwargs
-    )->InstituteStaffLeaveDetail:
+    ) -> InstituteStaffLeaveDetail:
         return await cls._model.create(**kwargs)
-    
+
     @classmethod
     async def apply(
         cls: "StaffLeaveTable",
         leave: LeaveTable,
         staff_id: int,
-        class_group_id: int,
         admin_id: int,
         session_id: int,
         updated_by_id: int
@@ -641,15 +649,13 @@ class StaffLeaveTable:
                 authorizer=leave.authorizer,
                 description=leave.description,
                 docurl=leave.docurl,
-                description = leave.description,
                 updated_by_id=updated_by_id
             )
             staff_leave_obj = await StaffLeaveTable._create(
-                leave=leave_obj,
+                leave=leave_obj.orm_obj,
                 session_id=session_id,
                 admin_id=admin_id,
                 staff_id=staff_id,
-                class_group_id=class_group_id
             )
             return await cls.from_orm_instance(staff_leave_obj)
         return await do()
@@ -659,20 +665,23 @@ class StaffLeaveTable:
         cls: "StaffLeaveTable",
         query_params: Dict = {},
         value_params: Dict = {},
-    )->ValuesQuery:
+    ) -> ValuesQuery:
         return await cls._model.filter(**query_params).values(**value_params)
 
     @classmethod
     async def _from_single_valuesquery(
         cls: "StaffLeaveTable",
         values: Dict,
-        nested: List[str]=[]
-    )->"StaffLeaveTable":
-        leave_start = LeaveTime(values["leave_start_date"], values["leave_start_meeting"])
-        leave_end = LeaveTime(values["leave_end_date"], values["leave_end_meeting"])
-        leave_obj = LeaveTable(**values, leave_end=leave_end, leave_start=leave_start)
+        nested: List[str] = []
+    ) -> "StaffLeaveTable":
+        leave_start = LeaveTime(
+            values["leave_start_date"], values["leave_start_meeting"])
+        leave_end = LeaveTime(
+            values["leave_end_date"], values["leave_end_meeting"])
+        leave_obj = LeaveTable(
+            **values, leave_end=leave_end, leave_start=leave_start)
 
-        staff_obj=None
+        staff_obj = None
         if "staff" in nested:
             staff_obj = StaffDataTypeForLeave(
                 staff_id=values["staff_id"],
@@ -680,27 +689,20 @@ class StaffLeaveTable:
                 pic_url=values["pic_url"]
             )
 
-        class_group=None
-        if "class_group" in nested:
-            class_group = ClassGroupDataTypeForLeave(
-                class_group_id=values["group_id"],
-                class_group_name=values["group_name"]
-            )
         return StaffLeaveTable(
             leave=leave_obj,
             admin_id=values["admin_id"],
             session_id=values["session_id"],
             staff=staff_obj,
-            class_group=class_group
         )
 
     @classmethod
     async def filter(
         cls: "StaffLeaveTable",
-        nested: List[str]=[],
+        nested: List[str] = [],
         **kwargs
-    )->List[LeaveDataTypeOut]:
-        value_params = {
+    ) -> List["StaffLeaveTable"]:
+        values_params = {
             "admin_id": "admin_id",
             "session_id": "session_id",
             "leave_id": "leave_id",
@@ -709,7 +711,7 @@ class StaffLeaveTable:
             "leave_end_date": "leave__leave_end__date",
             "leave_end_meeting": "leave__leave_end__meeting",
             "leave_type": "leave__leave_type",
-            "leave_status": "leave__status",
+            "leave_status": "leave__leave_status",
             "authorizer": "leave__authorizer",
             "reacted_by": "leave__reacted_by",
             "docurl": "leave__docurl",
@@ -718,17 +720,11 @@ class StaffLeaveTable:
             "updated_at": "leave__updated_at"
         }
         if "staff" in nested:
-            value_params={
-                **value_params,
+            values_params = {
+                **values_params,
                 "staff_id": "staff_id",
-                "name":"staff__name",
+                "name": "staff__name",
                 "pic_url": "staff__pic_url"
-            }
-        if "class_group" in nested:
-            values_params={
-                **value_params,
-                "group_id": "class_group_id",
-                "group_name": "class_group__group_name"
             }
 
         values_query = await cls._filter(query_params=kwargs, value_params=values_params)
@@ -743,23 +739,20 @@ class StaffLeaveTable:
         leave_id: int,
         approver_type: StaffLeaveApproverTypeEnum,
         updated_by_id: int,
-        class_group_id: Optional[int]=None,
-        approve: bool=True
-    )->"StaffLeaveTable":
+        approve: bool = True
+    ) -> "StaffLeaveTable":
         '''Approve or reject the leave.'''
         query_params = {
             "leave_id": leave_id,
-            "authorizer": approver_type,
+            "leave__authorizer": approver_type,
             "leave__active": True,
             "leave__leave_status": LeaveStatusEnum.pending,
         }
-        if class_group_id is not None:
-            query_params["class_group_id"]=class_group_id
 
         staffleave = await cls.get(nested=[], **query_params)
         staffleave.leave.leave_status = LeaveStatusEnum.approved if approve else LeaveStatusEnum.rejected
         await LeaveTable.update(
-            query_params=query_params,
+            query_params={"leave_id": staffleave.leave.leave_id},
             **{
                 "leave_status": staffleave.leave.leave_status,
                 "updated_by_id": updated_by_id,

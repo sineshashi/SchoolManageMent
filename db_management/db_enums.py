@@ -35,13 +35,13 @@ class DayEnum(int, Enum):
     sunday = 6
 
 class LeaveTypeEnum(str, Enum):
-    causal = "causal"
-    optional_holiday = "optional_holiday"
-    sick_leave = "sick_leave"
-    unpaid_leave = "unpaid_leave"
-    paternity_leave = "paternity_leave"
-    maternaity_leave = "maternity_leave"
-    privilege_leave = "privilege"
+    causal = "Causal leave"
+    optional_holiday = "Optional Holiday"
+    sick_leave = "Sick Leave"
+    unpaid_leave = "Unpaid Leave"
+    paternity_leave = "Paternity Leave"
+    maternaity_leave = "Maternity Leave"
+    privilege_leave = "Privilege Leave"
 
 class LeaveStatusEnum(str, Enum):
     approved="Approved"

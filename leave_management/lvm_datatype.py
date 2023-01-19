@@ -22,26 +22,27 @@ class StudentLeaveType(BaseModel):
 
 class AdminLeaveConfigDataType(BaseModel):
     id: int
-    staff_leaves: List[StaffLeaveType]=[]
-    student_leaves: List[StudentLeaveType]=[]
+    staff_leaves: List[StaffLeaveType]
+    student_leaves: List[StudentLeaveType]
 
 class LeaveTimeDataType(BaseModel):
     date: datetime.date
     meeting: MeetingEnum
 
 class LeaveDetailDataTypeIn(BaseModel):
-    leave_from: LeaveTimeDataType
-    leave_to: LeaveTimeDataType
+    leave_start: LeaveTimeDataType
+    leave_end: LeaveTimeDataType
     leave_type: LeaveTypeEnum
     description: Optional[str]=""
     authorizer: ApproverTypeEnum
+    docurl: str
 
 class LeaveDataTypeOut(LeaveDetailDataTypeIn):
+    leave_id: int
     leave_count: float
     leave_status: LeaveStatusEnum
-    reacted_by: ApproverTypeEnum
-    reacted_at: datetime.datetime
-    created_at: datetime.datetime
+    reacted_by: Optional[ApproverTypeEnum]=None
+    reacted_at: Optional[datetime.datetime]=None
 
 class StudentDataTypeForLeave(BaseModel):
     student_id: int
@@ -70,9 +71,15 @@ class StaffDataTypeForLeave(BaseModel):
     class Config:
         extra = Extra.ignore
 
-class ClassGroupDataTypeForLeave(BaseModel):
-    class_group_id: int
-    class_group_name: str
+class StudentLeaveDataTypeOut(BaseModel):
+    student:StudentDataTypeForLeave
+    leave: LeaveDataTypeOut
 
-    class Config:
-        extra: Extra.ignore
+class StudentLeaveWithSectionDataTypeOut(BaseModel):
+    student: StudentDataTypeForLeave
+    section: SectionDataTypeForLeave
+    leave: LeaveDataTypeOut
+
+class StaffLeaveDataTypeOut(BaseModel):
+    staff: StaffDataTypeForLeave
+    leave: LeaveDataTypeOut
