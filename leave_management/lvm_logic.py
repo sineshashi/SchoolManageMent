@@ -163,7 +163,7 @@ class LeaveTable:
         leave_start: LeaveTime,
         leave_end: LeaveTime,
         authorizer: ApproverTypeEnum,
-        leave_status: LeaveStatusEnum=LeaveStatusEnum.pending,
+        leave_status: LeaveStatusEnum = LeaveStatusEnum.pending,
         reacted_by: Optional[ApproverTypeEnum] = None,
         created_at: Optional[datetime.datetime] = None,
         updated_at: Optional[datetime.datetime] = None,
@@ -251,7 +251,7 @@ class LeaveTable:
         description: str,
         docurl: str,
         updated_by_id: int,
-        leave_status: LeaveStatusEnum=LeaveStatusEnum.pending
+        leave_status: LeaveStatusEnum = LeaveStatusEnum.pending
     ) -> "LeaveTable":
         @atomic()
         async def do():
@@ -265,7 +265,7 @@ class LeaveTable:
                 description=description,
                 docurl=docurl,
                 updated_by_id=updated_by_id,
-                leave_status = leave_status
+                leave_status=leave_status
             )
             return await LeaveTable.from_orm_instance(obj)
         return await do()

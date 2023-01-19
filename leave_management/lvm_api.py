@@ -7,7 +7,7 @@ from .lvm_logic import AdminLeaveConfigTable, StudentLeaveTable,\
     StaffLeaveTable, LeaveTable, LeaveTime
 from .lvm_datatype import StudentLeaveType, StaffLeaveType, AdminLeaveConfigDataType, \
     LeaveDetailDataTypeIn, LeaveDataTypeOut, StudentLeaveDataTypeOut, StudentLeaveWithSectionDataTypeOut,\
-        StaffLeaveDataTypeOut, LeaveTimeDataType
+    StaffLeaveDataTypeOut, LeaveTimeDataType
 from permission_management.base_permission import union_of_all_permission_types, is_authenticated, \
     is_app_staff_or_admin_under_super_admin, is_app_staff_or_super_admin
 from db_management.db_enums import LeaveStatusEnum, ApproverTypeEnum
@@ -177,20 +177,23 @@ async def list_all_students_for_super_admin_approval(
     )
     return [leave.dict() for leave in student_leaves]
 
+
 @router.post("/approveStudentLeave", response_model=LeaveDataTypeOut)
 async def approve_student_leave(
-    leave_id: int=Body(embed=True),
+    leave_id: int = Body(embed=True),
     approve_or_reject: bool = Body(embed=True),
-    approver_type: ApproverTypeEnum=Body(embed=True),
-    section_id: int=Body(embed=True),
-    token_data: union_of_all_permission_types=Depends(can_approve_student_leave)
+    approver_type: ApproverTypeEnum = Body(embed=True),
+    section_id: int = Body(embed=True),
+    token_data: union_of_all_permission_types = Depends(
+        can_approve_student_leave)
 ):
-    #Not checking the validity of section_id. Assuming that the frontend will send it right.
-    #Can be checked if necessary.
-    student_leave=await StudentLeaveTable.react(
+    # Not checking the validity of section_id. Assuming that the frontend will send it right.
+    # Can be checked if necessary.
+    student_leave = await StudentLeaveTable.react(
         leave_id, approver_type, token_data.user_id, section_id, approve_or_reject)
 
     return student_leave.leave.dict()
+
 
 @router.post("/applyLeaveAsStaff", response_model=LeaveDataTypeOut)
 async def apply_leave_as_staff(
@@ -213,33 +216,38 @@ async def apply_leave_as_staff(
     )
     return staff_leave_obj.leave.dict()
 
-@router.get("/listLeavesAppliedByStaff", response_model = List[LeaveDataTypeOut])
+
+@router.get("/listLeavesAppliedByStaff", response_model=List[LeaveDataTypeOut])
 async def list_leaves_applied_by_staff(
     staff_id: int,
     admin_id: int,
     session_id: int,
-    token_data: union_of_all_permission_types=Depends(is_authenticated)
+    token_data: union_of_all_permission_types = Depends(is_authenticated)
 ):
     staff_leaves = await StaffLeaveTable.filter(
         staff_id=staff_id, admin_id=admin_id, session_id=session_id)
     return [leave.leave.dict() for leave in staff_leaves]
 
+
 @router.get("/listStaffLeavesForAdminApproval", response_model=List[StaffLeaveDataTypeOut])
 async def list_staff_leaves_for_admin_approval(
     admin_id: int,
     session_id: int,
-    token_data: union_of_all_permission_types=Depends(is_app_staff_or_admin_under_super_admin)
+    token_data: union_of_all_permission_types = Depends(
+        is_app_staff_or_admin_under_super_admin)
 ):
     staff_leaves = await StaffLeaveTable.filter(
         nested=["staff"], admin_id=admin_id, session_id=session_id, leave__authorizer=ApproverTypeEnum.principal)
     return [leave.dict() for leave in staff_leaves]
 
+
 @router.post("/ApproveStaffLeave", response_model=List[LeaveDataTypeOut])
 async def approve_staff_leave(
-    leave_id: int=Body(embed=True),
+    leave_id: int = Body(embed=True),
     approve_or_reject: bool = Body(embed=True),
-    approver_type: ApproverTypeEnum=Body(embed=True),
-    token_data: union_of_all_permission_types=Depends(is_app_staff_or_admin_under_super_admin)
+    approver_type: ApproverTypeEnum = Body(embed=True),
+    token_data: union_of_all_permission_types = Depends(
+        is_app_staff_or_admin_under_super_admin)
 ):
     staff_leave = await StaffLeaveTable.react(
         leave_id=leave_id,
@@ -249,13 +257,14 @@ async def approve_staff_leave(
     )
     return staff_leave.leave.dict()
 
+
 @router.put("/updateLeaveDuration", response_model=LeaveDataTypeOut)
 async def update_leave(
     start_leave: LeaveTimeDataType,
     end_leave: LeaveTimeDataType,
-    admin_id: int=Body(embed=True),
-    leave_id: int=Body(embed=True),
-    token_data: union_of_all_permission_types=Depends(can_update_leave)
+    admin_id: int = Body(embed=True),
+    leave_id: int = Body(embed=True),
+    token_data: union_of_all_permission_types = Depends(can_update_leave)
 ):
     leave = await LeaveTable.update_leave_duration(
         leave_id=leave_id,
@@ -265,14 +274,16 @@ async def update_leave(
     )
     return leave.dict()
 
+
 @router.put("/changeAuthorizerForLeave", response_model=SuccessReponse)
 async def change_leave_authorizer(
     approver: ApproverTypeEnum,
-    leave_id: int=Body(embed=True),
-    token_data: union_of_all_permission_types=Depends(can_update_leave)
+    leave_id: int = Body(embed=True),
+    token_data: union_of_all_permission_types = Depends(can_update_leave)
 ):
     leave = await LeaveTable.update(
-        query_params={"leave_id": leave_id, "leave_status": LeaveStatusEnum.pending},
+        query_params={"leave_id": leave_id,
+                      "leave_status": LeaveStatusEnum.pending},
         authorizer=approver,
         updated_by_id=token_data.user_id
     )
