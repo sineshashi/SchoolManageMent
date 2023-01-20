@@ -1,6 +1,6 @@
 # SchoolManageMent
 
-This is a personal project on which I am working part time to learn the core things of object oriented paradigm. This project is inteded to consist of APIs for different purposes of school management like student and staff data management, leave management, holiday management etc.
+This is a personal project on which I am working part time to learn the core things of object oriented paradigm. This project is inteded to consist of APIs for different purposes of school management like student and staff data management, leave management, holiday management etc. Because this is a learning project, it may consist different coding styles and clean levels in different parts of code.
 By any means, this project is not suggested to be used in production untill and unless you know what you are doing. Permissions have been handled but not very carefully. Some APIs rely on the frontend to send the right data, backend does not verify those details.
 
 **Understanding of Terminology**:
@@ -53,4 +53,4 @@ By any means, this project is not suggested to be used in production untill and 
   
   7) **Leave Managemet**: Leave applications of student and institute staff both have been provided. Students can apply to Class Teacher, Vice Class Teacher, Principal etc while staff too can apply to the relevent designation. It has been left out to frontend that to whom those leaves can be applied should be permitted. Backend does not verify that leave can be applied of class teacher or not. Although this will be a matter of few lines of code to make those things configurable at backend.
   
-  **Till now, Rest APIs for these features have been provides. Next in pipeline is Attendance management system for students and staff both.**
+  **Till now, Rest APIs for these features have been provided. Next in pipeline is Attendance management system for students and staff both.**
