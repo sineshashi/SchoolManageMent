@@ -1,6 +1,7 @@
 # SchoolManageMent
 
-This is a personal project on which I am working part time to learn the core things of object oriented paradigm. This project is inteded to consist of APIs for different purposes of school management like student and staff data management, leave management, holiday management etc. 
+This is a personal project on which I am working part time to learn the core things of object oriented paradigm. This project is inteded to consist of APIs for different purposes of school management like student and staff data management, leave management, holiday management etc.
+By any means, this project is not suggested to be used in production untill and unless you know what you are doing. Permissions have been handled but not very carefully. Some APIs rely on the frontend to send the right data, backend does not verify those details.
 
 **Understanding of Terminology**:
   
@@ -35,3 +36,21 @@ This is a personal project on which I am working part time to learn the core thi
   14) Meeting: Reperesents a single meeting considering two meetings in a working day.
   
   15) Leave: Represents an entilty for consisting of all the data for a leave.
+  
+**Different Systems**
+  
+  1) **Authentication**: This application uses jwt authentication and stores specific data to the token and relies on that token data for authentication and permission management.
+  
+  2) **AppStaff Management**: AppStaff means the staff who are managing the system at the company level and do the work of onboarding new institutions. AppStaffs will have access to onboard new institutions and edit their details. AppStaff with app_admin designation will have access to all APIs in the system.
+  
+  3) **Institute Staff Management**: APIs related to institute staff management has been provided. Schools can create different type of staffs, store their personal and educational details in the database and give special designation and permissions like Class Teacher, Wing Co-ordinator etc.
+  
+  4) **Institute Configuration Mangement**: There are few things like what classes institute has, what subjects it provides in different classes etc to be saved at institute(admin) level. APIs for all that kind of stuff have been provided. Classes along with class group or level, subject groups and different types of levels in both cases of classes and subjects have been provided. So that persons with different level of permissions and designations can be created.
+  
+  5) **Student and Parent Management**: APIs related to student admission and saving details of students and parents have been provided. 
+  
+  6) **Holiday Management**: RestAPIs related to different type of holidays like weekly holidays, annual holidays and unusual holidays like summer vacation have been provided.
+  
+  7) **Leave Managemet**: Leave applications of student and institute staff both have been provided. Students can apply to Class Teacher, Vice Class Teacher, Principal etc while staff too can apply to the relevent designation. It has been left out to frontend that to whom those leaves can be applied should be permitted. Backend does not verify that leave can be applied of class teacher or not. Although this will be a matter of few lines of code to make those things configurable at backend.
+  
+  **Till now, Rest APIs for these features have been provides. Next in pipeline is Attendance management system for students and staff both.**
